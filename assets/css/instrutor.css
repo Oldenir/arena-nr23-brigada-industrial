@@ -70,11 +70,32 @@
 }
 
 .qr-canvas {
-  width: 220px;
-  height: 220px;
+  box-sizing: content-box;
+  display: grid;
+  place-items: center;
+  width: 260px;
+  min-width: 260px;
+  height: 260px;
+  min-height: 260px;
   border: 8px solid #fff;
   border-radius: 4px;
   background: #fff;
+  color: #111318;
+}
+
+.qr-canvas canvas,
+.qr-canvas img,
+.qr-canvas table,
+.qr-canvas svg {
+  display: block;
+  width: 260px !important;
+  height: 260px !important;
+}
+
+.qr-canvas.qr-error {
+  padding: 18px;
+  text-align: center;
+  font-weight: 800;
 }
 
 .public-link {

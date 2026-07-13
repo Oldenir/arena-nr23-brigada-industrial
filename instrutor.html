@@ -7,7 +7,7 @@
     <title>Central do Instrutor - ARENA SL</title>
     <link rel="stylesheet" href="/assets/css/global.css">
     <link rel="stylesheet" href="/assets/css/instrutor.css">
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" defer></script>
+    <script src="/assets/vendor/qrcode.min.js" defer></script>
     <script type="module" src="/assets/js/instructor.js"></script>
   </head>
   <body>
@@ -73,7 +73,7 @@
           <aside class="control-panel">
             <section class="panel-block">
               <h2>Acesso das equipes</h2>
-              <canvas id="qrCanvas" class="qr-canvas" width="220" height="220" aria-label="QR Code da sessão"></canvas>
+              <div id="qrCanvas" class="qr-canvas" role="img" aria-label="QR Code da sessão"></div>
               <a id="teamLink" class="public-link" href="/equipe.html">/equipe.html</a>
             </section>
 
