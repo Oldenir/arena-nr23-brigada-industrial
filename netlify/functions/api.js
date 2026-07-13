@@ -52,20 +52,26 @@ function ok(data, status = 200) {
   return json(status, { ok: true, data });
 }
 
+function errorDetails(error) {
+  return {
+    name: error?.name || typeof error,
+    message: error?.message || String(error),
+    stack: error?.stack || null
+  };
+}
+
 function fail(error) {
   console.error("API error", {
     name: error?.name,
     message: error?.message,
     stack: error?.stack
   });
-  if (!(error instanceof HttpError) || error.status >= 500) {
-    return json(500, { ok: false, error: { code: "internal_error", message: "Erro interno da API." } });
-  }
+  console.error(error);
 
   const status = error instanceof HttpError ? error.status : 500;
   const code = error instanceof HttpError ? error.code : "internal_error";
-  const message = error instanceof HttpError ? error.message : "Erro interno da API.";
-  return json(status, { ok: false, error: { code, message } });
+  const details = errorDetails(error);
+  return json(status, { ok: false, error: { code, ...details } });
 }
 
 function toWebResponse(response) {
@@ -129,7 +135,8 @@ function bodyJson(event) {
   try {
     const raw = event.isBase64Encoded ? Buffer.from(event.body, "base64").toString("utf8") : event.body;
     return JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    console.error(error);
     throw new HttpError(400, "invalid_json", "O corpo da requisição precisa ser JSON válido.");
   }
 }
@@ -580,6 +587,7 @@ async function route(storage, event) {
   }
 
   if (method === "POST" && parts[0] === "sessions" && parts.length === 1) {
+    console.error("POST /api/sessions payload", payload);
     const className = sanitizeText(payload.className, 80);
     if (className.length < 3) throw new HttpError(400, "invalid_class_name", "Informe o nome da turma com pelo menos 3 caracteres.");
     let created = null;
@@ -774,7 +782,9 @@ async function createLocalFileStorage() {
     const previous = localStorageQueue;
     let release;
     localStorageQueue = new Promise((resolve) => { release = resolve; });
-    await previous.catch(() => {});
+    await previous.catch((error) => {
+      console.error(error);
+    });
     try {
       return await task();
     } finally {
@@ -785,7 +795,8 @@ async function createLocalFileStorage() {
   async function readAll() {
     try {
       return JSON.parse(await readFile(LOCAL_STORE_PATH, "utf8"));
-    } catch {
+    } catch (error) {
+      console.error(error);
       return {};
     }
   }
@@ -827,7 +838,7 @@ async function createLocalFileStorage() {
         delete all[key];
         await writeAll(all);
         if (!Object.keys(all).length) {
-          try { await unlink(LOCAL_STORE_PATH); } catch {}
+          try { await unlink(LOCAL_STORE_PATH); } catch (error) { console.error(error); }
         }
         return { modified: true };
       });
@@ -863,6 +874,7 @@ export function createNetlifyBlobStorage(store) {
         const result = await store.setJSON(key, value, { onlyIfNew: true });
         return blobWriteResult(result);
       } catch (error) {
+        console.error(error);
         if (isBlobPreconditionError(error)) return { modified: false };
         throw error;
       }
@@ -872,6 +884,7 @@ export function createNetlifyBlobStorage(store) {
         const result = await store.setJSON(key, value, etag ? { onlyIfMatch: etag } : undefined);
         return blobWriteResult(result);
       } catch (error) {
+        console.error(error);
         if (isBlobPreconditionError(error)) return { modified: false };
         throw error;
       }
@@ -892,6 +905,7 @@ async function createBlobStorage() {
     const store = getStore({ name: STORE_NAME, consistency: "strong" });
     return createNetlifyBlobStorage(store);
   } catch (error) {
+    console.error(error);
     if (error?.name === "MissingBlobsEnvironmentError") {
       throw new HttpError(
         500,
@@ -908,6 +922,7 @@ export function createApi(storage) {
     try {
       return await route(storage, event);
     } catch (error) {
+      console.error(error);
       return fail(error);
     }
   };
@@ -920,6 +935,7 @@ export default async function handler(request, context) {
     const response = await createApi(storage)(event, context);
     return toWebResponse(response);
   } catch (error) {
+    console.error(error);
     return toWebResponse(fail(error));
   }
 }
