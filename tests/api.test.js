@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createApi, createMemoryStorage } from "../netlify/functions/api.js";
+import handler, { createApi, createMemoryStorage } from "../netlify/functions/api.js";
 
 function makeCaller() {
   const api = createApi(createMemoryStorage());
@@ -41,6 +41,33 @@ test("cria sessão e impede nome de equipe duplicado", async () => {
   const duplicate = await call("POST", `/api/sessions/${code}/join`, { name: " alfa " });
   assert.equal(duplicate.status, 409);
   assert.equal(duplicate.payload.ok, false);
+});
+
+test("health informa storage no contrato atual da API", async () => {
+  const call = makeCaller();
+  const health = await call("GET", "/api/health");
+  assert.equal(health.status, 200);
+  assert.equal(health.payload.data.status, "online");
+  assert.equal(health.payload.data.storage, "memory");
+});
+
+test("handler moderno responde Web Response para health", async () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = "test";
+  try {
+    const response = await handler(new Request("https://arena-sl.test/api/health"), {});
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.ok, true);
+    assert.equal(payload.data.status, "online");
+    assert.equal(payload.data.storage, "local-file");
+  } finally {
+    if (previousNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = previousNodeEnv;
+    }
+  }
 });
 
 test("bloqueia palavra competitiva para apenas uma equipe", async () => {

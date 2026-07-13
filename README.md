@@ -46,7 +46,7 @@ Abra a URL exibida no terminal, normalmente `http://localhost:8888`.
 
 Não use `python -m http.server` para validar a versão de produção. Ele abre os arquivos estáticos, mas não executa `/api/*`, criação de sessão, pontuação, ranking, QR com backend nem persistência.
 
-Durante `netlify dev`, a Function grava dados temporários em `.netlify/arena-sl-dev-store.json`. No deploy Netlify, a mesma API usa Netlify Blobs.
+Durante `netlify dev`, a Function grava dados temporários no diretório temporário do sistema para não disparar reload da CLI. No deploy Netlify, a mesma API usa Netlify Blobs.
 
 ## Rotas úteis
 

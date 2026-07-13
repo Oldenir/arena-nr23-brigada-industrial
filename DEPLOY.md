@@ -60,7 +60,7 @@ Use Node.js 20 ou superior no ambiente Netlify.
 
 Em produção, a Function usa `@netlify/blobs` no store `arena-sl-sessions`. Não é preciso expor token no frontend. Os tokens de instrutor e equipe ficam em hash no backend; o valor original fica somente no navegador que criou/entrou na sessão.
 
-Durante `netlify dev`, a persistência usa `.netlify/arena-sl-dev-store.json` como fallback local. Esse arquivo não deve ser publicado.
+Durante `netlify dev`, a persistência usa um arquivo temporário fora da pasta do projeto como fallback local. Esse arquivo não deve ser publicado.
 
 ## Teste pós-deploy
 

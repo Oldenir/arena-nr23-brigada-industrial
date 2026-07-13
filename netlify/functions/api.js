@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { modules, getModule, getActivity } from "../../data/game-content.js";
 import {
@@ -23,7 +24,7 @@ import {
 } from "../../assets/js/scoring.js";
 
 const STORE_NAME = "arena-sl-sessions";
-const LOCAL_STORE_PATH = join(process.cwd(), ".netlify", "arena-sl-dev-store.json");
+const LOCAL_STORE_PATH = process.env.ARENA_LOCAL_STORE_PATH || join(tmpdir(), "arena-sl-treinamentos", "arena-sl-dev-store.json");
 const MAX_HISTORY = 140;
 const MAX_REQUEST_LOG = 500;
 let localStorageQueue = Promise.resolve();
@@ -56,6 +57,28 @@ function fail(error) {
   const code = error instanceof HttpError ? error.code : "internal_error";
   const message = error instanceof HttpError ? error.message : "Erro interno da API.";
   return json(status, { ok: false, error: { code, message } });
+}
+
+function toWebResponse(response) {
+  return new Response(response.statusCode === 204 ? null : response.body, {
+    status: response.statusCode,
+    headers: response.headers || {}
+  });
+}
+
+async function toLegacyEvent(request) {
+  const url = new URL(request.url);
+  const method = request.method.toUpperCase();
+  const hasBody = !["GET", "HEAD"].includes(method);
+  return {
+    httpMethod: method,
+    path: url.pathname,
+    rawUrl: request.url,
+    headers: Object.fromEntries(request.headers.entries()),
+    queryStringParameters: Object.fromEntries(url.searchParams.entries()),
+    body: hasBody ? await request.text() : "",
+    isBase64Encoded: false
+  };
 }
 
 function nowIso() {
@@ -540,7 +563,7 @@ async function route(storage, event) {
   const payload = method === "GET" || method === "DELETE" ? {} : bodyJson(event);
 
   if (method === "GET" && parts[0] === "health") {
-    return ok({ status: "online", store: STORE_NAME, at: nowIso() });
+    return ok({ status: "online", storage: storage.kind || "memory", store: STORE_NAME, at: nowIso() });
   }
 
   if (method === "GET" && parts.length === 0) {
@@ -762,6 +785,7 @@ async function createLocalFileStorage() {
     await writeFile(LOCAL_STORE_PATH, JSON.stringify(value, null, 2), "utf8");
   }
   return {
+    kind: "local-file",
     async get(key) {
       return withLocalLock(async () => {
         const all = await readAll();
@@ -810,6 +834,7 @@ async function createBlobStorage() {
     const { getStore } = await import("@netlify/blobs");
     const store = getStore({ name: STORE_NAME, consistency: "strong" });
     return {
+      kind: "netlify-blobs",
       async get(key) {
         const entry = await store.getWithMetadata(key, { type: "json", consistency: "strong" });
         if (!entry || entry.data === null) return { data: null, etag: null };
@@ -827,6 +852,13 @@ async function createBlobStorage() {
       }
     };
   } catch (error) {
+    if (error?.name === "MissingBlobsEnvironmentError") {
+      throw new HttpError(
+        500,
+        "blobs_environment_missing",
+        "Netlify Blobs não foi inicializado pelo runtime da Function. Use a Function moderna com default export e Request/Response no deploy Netlify."
+      );
+    }
     throw error;
   }
 }
@@ -841,9 +873,15 @@ export function createApi(storage) {
   };
 }
 
-export async function handler(event) {
-  const storage = await createBlobStorage();
-  return createApi(storage)(event);
+export default async function handler(request, context) {
+  try {
+    const event = await toLegacyEvent(request);
+    const storage = await createBlobStorage();
+    const response = await createApi(storage)(event, context);
+    return toWebResponse(response);
+  } catch (error) {
+    return toWebResponse(fail(error));
+  }
 }
 
 export const contentModules = modules;

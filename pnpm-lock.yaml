@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       '@netlify/blobs':
-        specifier: ^9.1.2
+        specifier: ^9.1.6
         version: 9.1.6
 
 packages:
