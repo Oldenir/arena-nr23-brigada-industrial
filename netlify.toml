@@ -38,6 +38,11 @@
   status = 200
 
 [[redirects]]
+  from = "/self-test"
+  to = "/self-test.html"
+  status = 200
+
+[[redirects]]
   from = "/instrutor.html"
   to = "/instrutor.html"
   status = 200

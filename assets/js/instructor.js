@@ -10,6 +10,7 @@ let instructorToken = "";
 let session = null;
 let selectedActivityId = "";
 let pollTimer = null;
+let confirmDialog = null;
 
 init();
 
@@ -203,7 +204,11 @@ async function switchModule(moduleId) {
 }
 
 async function resetRanking() {
-  if (!confirm("Zerar ranking e tentativas do módulo ativo?")) return;
+  const confirmed = await askConfirm({
+    title: "Zerar ranking",
+    message: "Zerar ranking e tentativas do módulo ativo?"
+  });
+  if (!confirmed) return;
   try {
     const data = await api.activity(session.code, { action: "reset-ranking" }, instructorToken);
     updateSession(data.session);
@@ -214,7 +219,11 @@ async function resetRanking() {
 }
 
 async function restartSession() {
-  if (!confirm("Reiniciar a competição mantendo as equipes cadastradas?")) return;
+  const confirmed = await askConfirm({
+    title: "Reiniciar competição",
+    message: "Reiniciar a competição mantendo as equipes cadastradas?"
+  });
+  if (!confirmed) return;
   try {
     const data = await api.reset(session.code, instructorToken);
     updateSession(data.session);
@@ -244,7 +253,12 @@ async function manualScore(event) {
 }
 
 async function finishSession() {
-  if (!confirm("Encerrar esta sessão? As equipes não poderão pontuar depois disso.")) return;
+  const confirmed = await askConfirm({
+    title: "Encerrar sessão",
+    message: "Encerrar esta sessão? As equipes não poderão pontuar depois disso.",
+    confirmLabel: "Encerrar"
+  });
+  if (!confirmed) return;
   try {
     const data = await api.finish(session.code, instructorToken);
     updateSession(data.session);
@@ -255,7 +269,12 @@ async function finishSession() {
 }
 
 async function deleteSession() {
-  if (!confirm("Apagar definitivamente esta sessão?")) return;
+  const confirmed = await askConfirm({
+    title: "Apagar sessão",
+    message: "Apagar definitivamente esta sessão?",
+    confirmLabel: "Apagar"
+  });
+  if (!confirmed) return;
   try {
     await api.deleteSession(session.code, instructorToken);
     removeInstructorSession(session.code);
@@ -286,4 +305,63 @@ function activeActivity() {
 
 function normalizeCode(value) {
   return String(value || "").trim().toUpperCase().replace(/\s+/g, "");
+}
+
+function askConfirm(options = {}) {
+  const dialog = getConfirmDialog();
+  const title = options.title || "Confirmar ação";
+  const message = options.message || "Deseja continuar?";
+  const confirmLabel = options.confirmLabel || "Confirmar";
+
+  dialog.querySelector("[data-confirm-title]").textContent = title;
+  dialog.querySelector("[data-confirm-message]").textContent = message;
+  dialog.querySelector("[data-confirm-accept]").textContent = confirmLabel;
+
+  return new Promise((resolve) => {
+    const accept = dialog.querySelector("[data-confirm-accept]");
+    const cancel = dialog.querySelector("[data-confirm-cancel]");
+    const cleanup = (value) => {
+      accept.removeEventListener("click", onAccept);
+      cancel.removeEventListener("click", onCancel);
+      dialog.removeEventListener("cancel", onCancel);
+      dialog.removeEventListener("click", onBackdrop);
+      dialog.classList.remove("open");
+      if (dialog.open) dialog.close();
+      resolve(value);
+    };
+    const onAccept = () => cleanup(true);
+    const onCancel = (event) => {
+      event?.preventDefault();
+      cleanup(false);
+    };
+    const onBackdrop = (event) => {
+      if (event.target === dialog) cleanup(false);
+    };
+
+    accept.addEventListener("click", onAccept);
+    cancel.addEventListener("click", onCancel);
+    dialog.addEventListener("cancel", onCancel);
+    dialog.addEventListener("click", onBackdrop);
+    dialog.classList.add("open");
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    accept.focus();
+  });
+}
+
+function getConfirmDialog() {
+  if (confirmDialog) return confirmDialog;
+  confirmDialog = document.createElement("dialog");
+  confirmDialog.className = "confirm-dialog";
+  confirmDialog.innerHTML = `
+    <div class="confirm-dialog-card" role="document">
+      <h2 data-confirm-title>Confirmar ação</h2>
+      <p data-confirm-message>Deseja continuar?</p>
+      <div class="button-row">
+        <button class="button ghost" type="button" data-confirm-cancel>Cancelar</button>
+        <button class="button danger" type="button" data-confirm-accept>Confirmar</button>
+      </div>
+    </div>
+  `;
+  document.body.append(confirmDialog);
+  return confirmDialog;
 }

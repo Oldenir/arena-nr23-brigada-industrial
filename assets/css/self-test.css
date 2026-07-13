@@ -1,0 +1,125 @@
+.self-test-shell {
+  width: min(1080px, calc(100% - 28px));
+  margin: 0 auto;
+  padding: clamp(20px, 4vw, 42px) 0 56px;
+}
+
+.self-test-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: clamp(18px, 3vw, 28px);
+  background: linear-gradient(90deg, rgba(226, 58, 52, 0.18), rgba(255, 210, 74, 0.08), rgba(32, 37, 45, 0.95));
+  box-shadow: var(--shadow);
+}
+
+.self-test-hero h1 {
+  max-width: 760px;
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.self-test-hero p {
+  max-width: 720px;
+  color: var(--muted);
+}
+
+.self-test-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.self-test-card,
+.test-item {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: linear-gradient(180deg, rgba(41, 47, 56, 0.96), rgba(25, 29, 35, 0.96));
+  box-shadow: var(--shadow);
+}
+
+.self-test-card {
+  display: grid;
+  gap: 6px;
+}
+
+.self-test-card strong {
+  font-size: 1.25rem;
+}
+
+.self-test-card span,
+.test-item p {
+  color: var(--muted);
+}
+
+.test-list {
+  display: grid;
+  gap: 10px;
+}
+
+.test-item {
+  display: grid;
+  grid-template-columns: minmax(98px, 128px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.test-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 10px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+  font-weight: 800;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.test-item.approved .test-badge {
+  color: #d7ffe7;
+  border-color: rgba(47, 183, 110, 0.45);
+  background: rgba(47, 183, 110, 0.16);
+}
+
+.test-item.warning .test-badge {
+  color: #fff5cf;
+  border-color: rgba(255, 210, 74, 0.5);
+  background: rgba(255, 210, 74, 0.15);
+}
+
+.test-item.error .test-badge {
+  color: #ffe4e4;
+  border-color: rgba(255, 91, 87, 0.45);
+  background: rgba(255, 91, 87, 0.16);
+}
+
+.test-content {
+  display: grid;
+  gap: 4px;
+}
+
+.test-content strong,
+.test-content p {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .self-test-hero {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .test-item {
+    grid-template-columns: 1fr;
+  }
+}

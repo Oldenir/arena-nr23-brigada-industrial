@@ -224,6 +224,50 @@
   color: var(--muted);
 }
 
+.confirm-dialog {
+  width: min(420px, calc(100vw - 32px));
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  background: transparent;
+}
+
+.confirm-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.64);
+}
+
+.confirm-dialog.open:not([open]) {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.64);
+}
+
+.confirm-dialog-card {
+  display: grid;
+  gap: 14px;
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(41, 47, 56, 0.98), rgba(18, 22, 27, 0.98));
+  box-shadow: var(--shadow);
+}
+
+.confirm-dialog-card h2,
+.confirm-dialog-card p {
+  margin: 0;
+}
+
+.confirm-dialog-card p {
+  color: var(--muted);
+}
+
 @media (max-width: 1060px) {
   .session-setup,
   .dashboard-grid {

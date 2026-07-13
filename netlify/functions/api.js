@@ -26,6 +26,7 @@ const STORE_NAME = "arena-sl-sessions";
 const LOCAL_STORE_PATH = join(process.cwd(), ".netlify", "arena-sl-dev-store.json");
 const MAX_HISTORY = 140;
 const MAX_REQUEST_LOG = 500;
+let localStorageQueue = Promise.resolve();
 
 class HttpError extends Error {
   constructor(status, code, message) {
@@ -410,6 +411,16 @@ function answerRoute(session, event, payload) {
       });
     } else if (!evaluated.correct) {
       applyScore(team, moduleId, { wrong: 1, responseMs });
+      pushHistory(session, {
+        moduleId,
+        activityId,
+        teamId: team.id,
+        teamName: team.name,
+        action: "Tentativa incorreta",
+        points: 0,
+        attemptId: idempotencyKey,
+        detail: question.prompt || question.statement || question.id
+      });
     }
 
     return {
@@ -727,6 +738,18 @@ export function createMemoryStorage(initial = {}) {
 }
 
 async function createLocalFileStorage() {
+  async function withLocalLock(task) {
+    const previous = localStorageQueue;
+    let release;
+    localStorageQueue = new Promise((resolve) => { release = resolve; });
+    await previous.catch(() => {});
+    try {
+      return await task();
+    } finally {
+      release();
+    }
+  }
+
   async function readAll() {
     try {
       return JSON.parse(await readFile(LOCAL_STORE_PATH, "utf8"));
@@ -740,33 +763,41 @@ async function createLocalFileStorage() {
   }
   return {
     async get(key) {
-      const all = await readAll();
-      const entry = all[key];
-      return entry ? { data: entry.value, etag: entry.etag } : { data: null, etag: null };
+      return withLocalLock(async () => {
+        const all = await readAll();
+        const entry = all[key];
+        return entry ? { data: entry.value, etag: entry.etag } : { data: null, etag: null };
+      });
     },
     async create(key, value) {
-      const all = await readAll();
-      if (all[key]) return { modified: false };
-      all[key] = { value, etag: shortId("etag") };
-      await writeAll(all);
-      return { modified: true };
+      return withLocalLock(async () => {
+        const all = await readAll();
+        if (all[key]) return { modified: false };
+        all[key] = { value, etag: shortId("etag") };
+        await writeAll(all);
+        return { modified: true };
+      });
     },
     async set(key, value, etag) {
-      const all = await readAll();
-      if (!all[key]) return { modified: false };
-      if (etag && all[key].etag !== etag) return { modified: false };
-      all[key] = { value, etag: shortId("etag") };
-      await writeAll(all);
-      return { modified: true };
+      return withLocalLock(async () => {
+        const all = await readAll();
+        if (!all[key]) return { modified: false };
+        if (etag && all[key].etag !== etag) return { modified: false };
+        all[key] = { value, etag: shortId("etag") };
+        await writeAll(all);
+        return { modified: true };
+      });
     },
     async delete(key) {
-      const all = await readAll();
-      delete all[key];
-      await writeAll(all);
-      if (!Object.keys(all).length) {
-        try { await unlink(LOCAL_STORE_PATH); } catch {}
-      }
-      return { modified: true };
+      return withLocalLock(async () => {
+        const all = await readAll();
+        delete all[key];
+        await writeAll(all);
+        if (!Object.keys(all).length) {
+          try { await unlink(LOCAL_STORE_PATH); } catch {}
+        }
+        return { modified: true };
+      });
     }
   };
 }
