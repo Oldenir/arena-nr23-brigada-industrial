@@ -43,6 +43,9 @@ async function sendAnswer(ctx, payload, resultBox, options = {}) {
     }
     return data;
   } catch (error) {
+    if (["already_answered", "attempt_limit", "activity_not_active", "activity_not_open"].includes(error.code)) {
+      await refreshSession(ctx);
+    }
     toast(describeError(error), "error");
     if (resultBox) {
       resultBox.className = "answer-result result-bad";
@@ -53,6 +56,15 @@ async function sendAnswer(ctx, payload, resultBox, options = {}) {
   } finally {
     if (trigger && !card?.classList.contains("is-final")) buttonLoading(trigger, false);
     if (card) card.dataset.sending = "false";
+  }
+}
+
+async function refreshSession(ctx) {
+  try {
+    const data = await api.getSession(ctx.code, { teamToken: ctx.teamToken });
+    ctx.updateSession(data.session);
+  } catch {
+    // Mantem o rascunho local se a sincronizacao de conflito tambem falhar.
   }
 }
 
@@ -164,7 +176,7 @@ export function renderFillBlank(ctx) {
         <form class="fill-form">
           <label>
             Resposta
-            <input name="answer" autocomplete="off" value="${escapeHTML(draft.answer || "")}" ${attempt?.final ? "disabled" : ""}>
+            <input name="answer" data-draft-key="question:${escapeHTML(question.id)}:answer" autocomplete="off" value="${escapeHTML(draft.answer || "")}" ${attempt?.final ? "disabled" : ""}>
           </label>
           <button class="button primary" type="submit" ${attempt?.final ? "disabled" : ""}>Validar lacuna</button>
         </form>
@@ -175,12 +187,16 @@ export function renderFillBlank(ctx) {
   ctx.root.querySelectorAll(".fill-form").forEach((form) => {
     const card = form.closest("[data-question]");
     const input = form.elements.answer;
-    input?.addEventListener("input", () => {
+    const saveDraft = () => {
       const draft = questionDraft(ctx, card.dataset.question);
       draft.answer = input.value;
       draft.selectionStart = input.selectionStart;
       draft.selectionEnd = input.selectionEnd;
-    });
+    };
+    input?.addEventListener("input", saveDraft);
+    input?.addEventListener("select", saveDraft);
+    input?.addEventListener("click", saveDraft);
+    input?.addEventListener("keyup", saveDraft);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       sendAnswer(ctx, {
@@ -196,12 +212,13 @@ export function renderSequence(ctx) {
   ctx.root.innerHTML = header(ctx) + ctx.activity.questions.map((question) => {
     const attempt = attemptFor(ctx, question.id);
     const draft = questionDraft(ctx, question.id);
-    const items = Array.isArray(draft.order) ? orderItems(question.items, draft.order) : question.items;
+    const sequenceItems = normalizeSequenceItems(question);
+    const items = Array.isArray(draft.order) ? orderItems(sequenceItems, draft.order) : sequenceItems;
     return `
       <article class="question-card ${attempt?.final ? "is-final" : ""}" data-question="${question.id}">
         <h3>${escapeHTML(question.prompt)}</h3>
         <div class="attempt-result">${resultMarkup(attempt)}</div>
-        <div class="sequence-list">
+        <div class="sequence-list" data-sequence-list="${escapeHTML(question.id)}">
           ${items.map((item, index) => sequenceItem(item, index, attempt?.final)).join("")}
         </div>
         <button class="button primary" data-check-sequence type="button" ${attempt?.final ? "disabled" : ""}>Validar sequência</button>
@@ -218,7 +235,7 @@ export function renderSequence(ctx) {
   ctx.root.querySelectorAll("[data-check-sequence]").forEach((button) => {
     button.addEventListener("click", () => {
       const card = button.closest("[data-question]");
-      const answer = [...card.querySelectorAll(".sequence-item")].map((item) => item.dataset.value);
+      const answer = [...card.querySelectorAll(".sequence-item")].map((item) => item.dataset.itemId);
       sendAnswer(ctx, {
         questionId: card.dataset.question,
         answer,
@@ -228,16 +245,31 @@ export function renderSequence(ctx) {
   });
 }
 
+function normalizeSequenceItems(question) {
+  return (question.items || []).map((item, index) => {
+    if (item && typeof item === "object") {
+      return {
+        id: String(item.id || `${question.id}-step-${index + 1}`),
+        text: String(item.text || item.label || "")
+      };
+    }
+    return {
+      id: `${question.id}-step-${index + 1}`,
+      text: String(item || "")
+    };
+  });
+}
+
 function orderItems(items, order) {
-  const byValue = new Map(items.map((item) => [item, item]));
-  const ordered = order.filter((item) => byValue.has(item));
-  return [...ordered, ...items.filter((item) => !ordered.includes(item))];
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const ordered = order.filter((itemId) => byId.has(itemId)).map((itemId) => byId.get(itemId));
+  return [...ordered, ...items.filter((item) => !order.includes(item.id))];
 }
 
 function sequenceItem(item, index, disabled) {
   return `
-    <div class="sequence-item" data-value="${escapeHTML(item)}">
-      <span>${index + 1}. ${escapeHTML(item)}</span>
+    <div class="sequence-item" data-item-id="${escapeHTML(item.id)}" data-label="${escapeHTML(item.text)}">
+      <span><strong data-sequence-position>${index + 1}.</strong> ${escapeHTML(item.text)}</span>
       <button class="move-button" data-move="up" type="button" ${disabled ? "disabled" : ""}>↑</button>
       <button class="move-button" data-move="down" type="button" ${disabled ? "disabled" : ""}>↓</button>
     </div>
@@ -254,13 +286,14 @@ function moveItem(button) {
     list.insertBefore(item.nextElementSibling, item);
   }
   [...list.children].forEach((child, index) => {
-    child.querySelector("span").textContent = `${index + 1}. ${child.dataset.value}`;
+    const position = child.querySelector("[data-sequence-position]");
+    if (position) position.textContent = `${index + 1}.`;
   });
 }
 
 function saveSequenceDraft(ctx, card) {
   const draft = questionDraft(ctx, card.dataset.question);
-  draft.order = [...card.querySelectorAll(".sequence-item")].map((item) => item.dataset.value);
+  draft.order = [...card.querySelectorAll(".sequence-item")].map((item) => item.dataset.itemId);
 }
 
 export function renderEmergency(ctx) {
@@ -275,7 +308,7 @@ export function renderEmergency(ctx) {
           ${question.decisions.map((decision) => `
             <label>
               ${escapeHTML(decision.label)}
-              <select name="${escapeHTML(decision.key)}" ${attempt?.final ? "disabled" : ""}>
+              <select name="${escapeHTML(decision.key)}" data-draft-key="question:${escapeHTML(question.id)}:${escapeHTML(decision.key)}" ${attempt?.final ? "disabled" : ""}>
                 <option value="">Selecionar</option>
                 ${decision.options.map((option) => `<option value="${escapeHTML(option)}" ${draft[decision.key] === option ? "selected" : ""}>${escapeHTML(option)}</option>`).join("")}
               </select>
@@ -314,11 +347,11 @@ export function renderEmergency(ctx) {
 
 export function header(ctx) {
   return `
-    <div class="activity-meta">
-      <span>${escapeHTML(ctx.activity.title)}</span>
-      <span>${escapeHTML(ctx.activity.subtitle || "")}</span>
-      <span>${Number(ctx.activity.points || 0)} pontos</span>
-      ${ctx.activity.hint ? `<span>Dica: ${escapeHTML(ctx.activity.hint)}</span>` : ""}
+    <div class="activity-meta" data-activity-header>
+      <span data-activity-title>${escapeHTML(ctx.activity.title)}</span>
+      <span data-activity-subtitle>${escapeHTML(ctx.activity.subtitle || "")}</span>
+      <span data-activity-points>${Number(ctx.activity.points || 0)} pontos</span>
+      <span data-activity-hint class="${ctx.activity.hint ? "" : "hidden"}">${ctx.activity.hint ? `Dica: ${escapeHTML(ctx.activity.hint)}` : ""}</span>
     </div>
   `;
 }

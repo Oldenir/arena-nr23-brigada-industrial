@@ -119,7 +119,7 @@ function renderCells(ctx, cells) {
         html.push(`
           <div class="cross-cell ${claimed ? "claimed" : ""}">
             ${cell.numbers.length ? `<small>${cell.numbers.join("/")}</small>` : ""}
-            <input maxlength="1" inputmode="text" autocomplete="off" value="${escapeHTML(value)}" data-r="${row}" data-c="${col}" data-entries="${cell.entries.join(",")}" ${claimed ? "disabled" : ""}>
+            <input maxlength="1" inputmode="text" autocomplete="off" value="${escapeHTML(value)}" data-r="${row}" data-c="${col}" data-draft-key="cell:${row}:${col}" data-entries="${cell.entries.join(",")}" ${claimed ? "disabled" : ""}>
           </div>
         `);
       }

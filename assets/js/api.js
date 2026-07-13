@@ -9,7 +9,7 @@ async function request(path, options = {}) {
     body: options.body ? JSON.stringify(options.body) : undefined
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload.ok === false) {
+  if (payload.ok === false || (!response.ok && payload.ok !== true)) {
     const message = payload.error?.message || `Erro HTTP ${response.status}`;
     const error = new Error(message);
     error.status = response.status;

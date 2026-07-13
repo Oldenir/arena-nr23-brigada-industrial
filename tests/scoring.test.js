@@ -6,7 +6,8 @@ import {
   createTeamScores,
   evaluateAnswer,
   normalizeCompact,
-  normalizeText
+  normalizeText,
+  sequenceItemId
 } from "../assets/js/scoring.js";
 import { getActivity } from "../data/game-content.js";
 
@@ -33,4 +34,13 @@ test("avalia lacuna aceitando ausência de acento", () => {
   const activity = getActivity("nr23", "fill-blank");
   const result = evaluateAnswer(activity, { questionId: "fill-05", answer: "conducao" });
   assert.equal(result.correct, true);
+});
+
+test("avalia sequencia por ids estaveis dos itens", () => {
+  const activity = getActivity("nr23", "safe-sequence");
+  const question = activity.questions.find((item) => item.id === "seq-01");
+  const ids = question.items.map((_, index) => sequenceItemId(question, index));
+
+  assert.equal(evaluateAnswer(activity, { questionId: question.id, answer: ids }).correct, true);
+  assert.equal(evaluateAnswer(activity, { questionId: question.id, answer: [ids[1], ids[0], ...ids.slice(2)] }).correct, false);
 });

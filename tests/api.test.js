@@ -219,6 +219,40 @@ test("claims competitivos expõem metadados seguros para o painel ao vivo", asyn
   assert.ok(claim.clue);
 });
 
+test("catalogo publico de sequencia usa ids e envio valida por ids", async () => {
+  const call = makeCaller();
+  const { code, instructorToken } = await createSession(call);
+  const alfa = await join(call, code, "Alfa");
+  await call("POST", `/api/sessions/${code}/activity`, {
+    action: "open",
+    moduleId: "nr23",
+    activityId: "safe-sequence"
+  }, { "x-instructor-token": instructorToken });
+
+  const state = await call("GET", `/api/sessions/${code}`, null, { "x-team-token": alfa.teamToken });
+  const activity = state.payload.data.session.catalog.activities.find((item) => item.id === "safe-sequence");
+  const question = activity.questions.find((item) => item.id === "seq-01");
+  assert.equal(typeof question.items[0], "object");
+  assert.equal("answer" in question.items[0], false);
+  assert.ok(question.items[0].id);
+  assert.ok(question.items[0].text);
+
+  const orderedIds = [...question.items]
+    .map((item) => item.id)
+    .sort((a, b) => Number(a.match(/step-(\d+)/)?.[1] || 0) - Number(b.match(/step-(\d+)/)?.[1] || 0));
+  const answer = await call("POST", `/api/sessions/${code}/answer`, {
+    moduleId: "nr23",
+    activityId: "safe-sequence",
+    questionId: "seq-01",
+    answer: orderedIds,
+    idempotencyKey: "sequence-id-answer-0001"
+  }, { "x-team-token": alfa.teamToken });
+
+  assert.equal(answer.status, 200);
+  assert.equal(answer.payload.data.correct, true);
+  assert.equal(answer.payload.data.points, 20);
+});
+
 test("erros internos não retornam stack ou caminhos ao cliente", async () => {
   const api = createApi({
     async create() {

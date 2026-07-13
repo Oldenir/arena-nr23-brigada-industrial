@@ -73,9 +73,47 @@ test("polling da equipe usa chave de atividade e atualização incremental", asy
   assert.match(teamJs, /function activityRenderKey/);
   assert.match(teamJs, /stage\.dataset\.activityRenderKey !== key/);
   assert.match(teamJs, /renderer\.updateActivity\?\.\(ctx\)/);
+  assert.match(teamJs, /function renderActivityShell/);
+  assert.match(teamJs, /function updateActivityStatus/);
+  assert.match(teamJs, /function updateRankingPanel/);
+  assert.match(teamJs, /function updateClaims/);
+  assert.match(teamJs, /function updateProgress/);
+  assert.match(teamJs, /function updateFeedback/);
+  assert.match(teamJs, /function captureTransientState/);
+  assert.match(teamJs, /function restoreTransientState/);
 
   const renderKeyBody = teamJs.slice(teamJs.indexOf("function activityRenderKey"), teamJs.indexOf("function getActivityDraft"));
   assert.doesNotMatch(renderKeyBody, /updatedAt/);
+  assert.doesNotMatch(renderKeyBody, /serverTime|ranking|history|scores|claims|questions|words|entries|hint/);
+  assert.match(renderKeyBody, /currentSession\.code/);
+  assert.match(renderKeyBody, /currentSession\.activeModule/);
+  assert.match(renderKeyBody, /currentSession\.activeActivityId/);
+  assert.match(renderKeyBody, /currentSession\.activityStatus/);
+});
+
+test("atividades mantem rascunhos e envios por identidade estavel", async () => {
+  const commonJs = await readFile(new URL("../assets/js/activities/common.js", import.meta.url), "utf8");
+  const crosswordJs = await readFile(new URL("../assets/js/activities/crossword.js", import.meta.url), "utf8");
+  const wordSearchJs = await readFile(new URL("../assets/js/activities/word-search.js", import.meta.url), "utf8");
+  const apiJs = await readFile(new URL("../assets/js/api.js", import.meta.url), "utf8");
+
+  assert.match(commonJs, /data-draft-key="question:/);
+  assert.match(commonJs, /data-sequence-list=/);
+  assert.match(commonJs, /data-item-id=/);
+  assert.match(commonJs, /dataset\.itemId/);
+  assert.match(commonJs, /dataset\.sending === "true"/);
+  assert.match(commonJs, /already_answered/);
+  assert.match(commonJs, /refreshSession/);
+  assert.match(crosswordJs, /data-draft-key="cell:/);
+  assert.match(apiJs, /payload\.ok !== true/);
+
+  const wordUpdate = wordSearchJs.slice(wordSearchJs.indexOf("export function updateActivity"), wordSearchJs.indexOf("function claimKey"));
+  assert.doesNotMatch(wordUpdate, /innerHTML|replaceChildren/);
+});
+
+test("servidor nao mantem logs temporarios com payload sensivel", async () => {
+  const apiFunction = await readFile(new URL("../netlify/functions/api.js", import.meta.url), "utf8");
+  assert.doesNotMatch(apiFunction, /POST \/api\/sessions payload/);
 });
 
 test("painel do instrutor possui monitor dinâmico e cartões de atividade", async () => {

@@ -140,8 +140,11 @@ export function evaluateAnswer(activity, payload = {}) {
   }
 
   if (activity.type === "sequence") {
-    const actual = Array.isArray(payload.answer) ? payload.answer.map(normalizeCompact) : [];
-    const expected = question.items.map(normalizeCompact);
+    const rawAnswer = Array.isArray(payload.answer) ? payload.answer.map((item) => String(item ?? "")) : [];
+    const expectedIds = question.items.map((_, index) => sequenceItemId(question, index));
+    const usesIds = rawAnswer.every((item) => expectedIds.includes(item));
+    const actual = usesIds ? rawAnswer : rawAnswer.map(normalizeCompact);
+    const expected = usesIds ? expectedIds : question.items.map(normalizeCompact);
     return {
       ok: true,
       correct: actual.length === expected.length && actual.every((item, index) => item === expected[index]),
@@ -197,6 +200,10 @@ export function seededShuffle(items, seed) {
   return output;
 }
 
+export function sequenceItemId(question, index) {
+  return `${question.id}-step-${index + 1}`;
+}
+
 export function stripAnswersFromActivity(activity, options = {}) {
   const teamSeed = options.teamSeed || "public";
   const base = {
@@ -243,7 +250,13 @@ export function stripAnswersFromActivity(activity, options = {}) {
         clean.options = seededShuffle(question.options || activity.options || [], `${teamSeed}:${question.id}`);
       }
       if (activity.type === "sequence") {
-        clean.items = seededShuffle(question.items, `${teamSeed}:${question.id}`);
+        clean.items = seededShuffle(
+          question.items.map((text, index) => ({
+            id: sequenceItemId(question, index),
+            text
+          })),
+          `${teamSeed}:${question.id}`
+        );
       }
       if (activity.type === "emergency") {
         clean.decisions = question.decisions.map((decision) => ({

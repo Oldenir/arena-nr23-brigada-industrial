@@ -53,16 +53,17 @@ function ok(data, status = 200) {
 }
 
 function fail(error) {
-  console.error("API error", {
-    name: error?.name,
-    message: error?.message,
-    stack: error?.stack
-  });
-  console.error(error);
-
   const status = error instanceof HttpError ? error.status : 500;
   const code = error instanceof HttpError ? error.code : "internal_error";
   const message = error instanceof HttpError ? error.message : "Erro interno da API.";
+  if (!(error instanceof HttpError) || status >= 500) {
+    console.error("API error", {
+      name: error?.name,
+      status,
+      code,
+      message
+    });
+  }
   return json(status, { ok: false, error: { code, message } });
 }
 
@@ -127,8 +128,7 @@ function bodyJson(event) {
   try {
     const raw = event.isBase64Encoded ? Buffer.from(event.body, "base64").toString("utf8") : event.body;
     return JSON.parse(raw);
-  } catch (error) {
-    console.error(error);
+  } catch {
     throw new HttpError(400, "invalid_json", "O corpo da requisição precisa ser JSON válido.");
   }
 }
@@ -592,7 +592,6 @@ async function route(storage, event) {
   }
 
   if (method === "POST" && parts[0] === "sessions" && parts.length === 1) {
-    console.error("POST /api/sessions payload", payload);
     const className = sanitizeText(payload.className, 80);
     if (className.length < 3) throw new HttpError(400, "invalid_class_name", "Informe o nome da turma com pelo menos 3 caracteres.");
     let created = null;
@@ -801,7 +800,7 @@ async function createLocalFileStorage() {
     try {
       return JSON.parse(await readFile(LOCAL_STORE_PATH, "utf8"));
     } catch (error) {
-      console.error(error);
+      if (error?.code !== "ENOENT") console.error("Local store read failed", { message: error.message });
       return {};
     }
   }
@@ -879,7 +878,6 @@ export function createNetlifyBlobStorage(store) {
         const result = await store.setJSON(key, value, { onlyIfNew: true });
         return blobWriteResult(result);
       } catch (error) {
-        console.error(error);
         if (isBlobPreconditionError(error)) return { modified: false };
         throw error;
       }
@@ -889,7 +887,6 @@ export function createNetlifyBlobStorage(store) {
         const result = await store.setJSON(key, value, etag ? { onlyIfMatch: etag } : undefined);
         return blobWriteResult(result);
       } catch (error) {
-        console.error(error);
         if (isBlobPreconditionError(error)) return { modified: false };
         throw error;
       }
@@ -910,7 +907,6 @@ async function createBlobStorage() {
     const store = getStore({ name: STORE_NAME, consistency: "strong" });
     return createNetlifyBlobStorage(store);
   } catch (error) {
-    console.error(error);
     if (error?.name === "MissingBlobsEnvironmentError") {
       throw new HttpError(
         500,
@@ -927,7 +923,6 @@ export function createApi(storage) {
     try {
       return await route(storage, event);
     } catch (error) {
-      console.error(error);
       return fail(error);
     }
   };
@@ -940,7 +935,6 @@ export default async function handler(request, context) {
     const response = await createApi(storage)(event, context);
     return toWebResponse(response);
   } catch (error) {
-    console.error(error);
     return toWebResponse(fail(error));
   }
 }

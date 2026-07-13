@@ -118,7 +118,9 @@ function startPolling() {
 }
 
 function updateSession(nextSession) {
+  const previousSession = session;
   session = nextSession;
+  clearDraftForActivitySwitch(previousSession, nextSession);
   $("#joinPanel").classList.add("hidden");
   $("#roomPanel").classList.remove("hidden");
   renderRoom();
@@ -126,6 +128,13 @@ function updateSession(nextSession) {
 
 function renderRoom() {
   if (!session) return;
+  updateTeamHeader();
+  updateProgress();
+  updateRankingPanel();
+  renderActivityShell();
+}
+
+function updateTeamHeader() {
   const team = session.teams.find((item) => item.id === session.currentTeamId);
   const moduleId = session.activeModule;
   const score = team?.scores?.[moduleId]?.points || 0;
@@ -133,8 +142,18 @@ function renderRoom() {
   $("#teamName").textContent = team?.name || "Equipe";
   $("#sessionInfo").textContent = `${session.className} - ${session.code}`;
   $("#teamScore").textContent = score;
+}
+
+function updateProgress() {
+  const moduleId = session.activeModule;
   $("#firstAidNotice").classList.toggle("hidden", moduleId !== "first-aid");
+}
+
+function updateRankingPanel() {
   renderRanking($("#ranking"), session.ranking);
+}
+
+function renderActivityShell() {
   renderStage();
 }
 
@@ -152,11 +171,11 @@ function renderStage() {
     return;
   }
   if (session.activityStatus === "paused") {
-    renderStageMessage(stage, `paused:${activityRenderKey(session, activity)}`, `<h2>${escapeHTML(activity.title)}</h2><p>Atividade pausada pelo instrutor.</p>`);
+    renderStageMessage(stage, `paused:${activityRenderKey(session)}`, `<h2>${escapeHTML(activity.title)}</h2><p>Atividade pausada pelo instrutor.</p>`);
     return;
   }
   if (session.activityStatus === "closed" || session.activityStatus === "selected") {
-    renderStageMessage(stage, `selected:${activityRenderKey(session, activity)}`, `<h2>${escapeHTML(activity.title)}</h2><p>Aguardando liberação do instrutor.</p>`);
+    renderStageMessage(stage, `selected:${activityRenderKey(session)}`, `<h2>${escapeHTML(activity.title)}</h2><p>Aguardando liberação do instrutor.</p>`);
     return;
   }
 
@@ -166,15 +185,20 @@ function renderStage() {
     return;
   }
 
-  const key = activityRenderKey(session, activity);
+  const key = activityRenderKey(session);
   const ctx = activityContext(stage, activity);
   if (stage.dataset.activityRenderKey !== key) {
+    const snapshot = captureTransientState(stage);
     renderer.renderActivity(ctx);
     stage.dataset.activityRenderKey = key;
     stage.dataset.stageMessageKey = "";
+    updateActivityStatus(ctx);
+    restoreTransientState(stage, snapshot, key);
     return;
   }
-  renderer.updateActivity?.(ctx);
+  updateActivityStatus(ctx);
+  updateClaims(ctx, renderer);
+  updateFeedback(ctx);
 }
 
 function renderStageMessage(stage, key, html) {
@@ -199,18 +223,39 @@ function activityContext(stage, activity) {
   };
 }
 
-function activityRenderKey(currentSession, activity) {
+function updateActivityStatus(ctx) {
+  const header = ctx.root.querySelector("[data-activity-header]");
+  if (!header) return;
+  const title = header.querySelector("[data-activity-title]");
+  const subtitle = header.querySelector("[data-activity-subtitle]");
+  const points = header.querySelector("[data-activity-points]");
+  const hint = header.querySelector("[data-activity-hint]");
+  if (title) title.textContent = ctx.activity.title || "";
+  if (subtitle) subtitle.textContent = ctx.activity.subtitle || "";
+  if (points) points.textContent = `${Number(ctx.activity.points || 0)} pontos`;
+  if (hint) {
+    hint.textContent = ctx.activity.hint ? `Dica: ${ctx.activity.hint}` : "";
+    hint.classList.toggle("hidden", !ctx.activity.hint);
+  }
+}
+
+function updateClaims(ctx, renderer) {
+  renderer.updateActivity?.(ctx);
+}
+
+function updateFeedback(ctx) {
+  ctx.root.querySelectorAll("[data-question]").forEach((card) => {
+    const attempt = ctx.session.myAttempts?.[`${ctx.moduleId}:${ctx.activity.id}:${card.dataset.question}`];
+    if (attempt?.final) card.classList.add("is-final");
+  });
+}
+
+function activityRenderKey(currentSession) {
   return [
     currentSession.code,
     currentSession.activeModule,
     currentSession.activeActivityId,
-    currentSession.activityStatus,
-    activity?.id || "",
-    activity?.type || "",
-    activity?.hint || "",
-    activity?.questions?.length || 0,
-    activity?.words?.length || 0,
-    activity?.entries?.length || 0
+    currentSession.activityStatus
   ].join(":");
 }
 
@@ -230,6 +275,102 @@ function clearActivityDraft(moduleId, activityId) {
 
 function clearAllDrafts() {
   for (const key of Object.keys(draftState)) delete draftState[key];
+}
+
+function clearDraftForActivitySwitch(previousSession, nextSession) {
+  if (!previousSession?.activeActivityId) return;
+  const sameActivity = previousSession.activeModule === nextSession?.activeModule
+    && previousSession.activeActivityId === nextSession?.activeActivityId;
+  if (!sameActivity) clearActivityDraft(previousSession.activeModule, previousSession.activeActivityId);
+}
+
+function captureTransientState(root) {
+  const active = document.activeElement;
+  const focusKey = active && root.contains(active) ? fieldKey(active) : "";
+  const snapshot = {
+    activityRenderKey: root.dataset.activityRenderKey || "",
+    scrollTop: root.scrollTop,
+    scrollLeft: root.scrollLeft,
+    focusKey,
+    selectionStart: null,
+    selectionEnd: null,
+    fields: {},
+    sequences: {}
+  };
+
+  if (focusKey && typeof active.selectionStart === "number") {
+    snapshot.selectionStart = active.selectionStart;
+    snapshot.selectionEnd = active.selectionEnd;
+  }
+
+  root.querySelectorAll("input, textarea, select").forEach((control) => {
+    const key = fieldKey(control);
+    if (!key) return;
+    snapshot.fields[key] = {
+      value: control.value,
+      checked: control.checked,
+      scrollTop: control.scrollTop,
+      scrollLeft: control.scrollLeft
+    };
+  });
+
+  root.querySelectorAll("[data-sequence-list]").forEach((list) => {
+    const key = list.dataset.sequenceList;
+    snapshot.sequences[key] = [...list.querySelectorAll("[data-item-id]")].map((item) => item.dataset.itemId);
+  });
+
+  return snapshot;
+}
+
+function restoreTransientState(root, snapshot, nextRenderKey) {
+  if (!snapshot || snapshot.activityRenderKey !== nextRenderKey) return;
+  root.scrollTop = snapshot.scrollTop || 0;
+  root.scrollLeft = snapshot.scrollLeft || 0;
+
+  for (const [key, field] of Object.entries(snapshot.fields || {})) {
+    const control = root.querySelector(`[data-draft-key="${cssAttribute(key)}"]`);
+    if (!control || control.disabled) continue;
+    if (control.type === "checkbox" || control.type === "radio") {
+      control.checked = Boolean(field.checked);
+    } else {
+      control.value = field.value;
+    }
+    control.scrollTop = field.scrollTop || 0;
+    control.scrollLeft = field.scrollLeft || 0;
+  }
+
+  for (const [key, order] of Object.entries(snapshot.sequences || {})) {
+    const list = root.querySelector(`[data-sequence-list="${cssAttribute(key)}"]`);
+    if (!list) continue;
+    const byId = new Map([...list.children].map((item) => [item.dataset.itemId, item]));
+    order.forEach((itemId) => {
+      const item = byId.get(itemId);
+      if (item) list.append(item);
+    });
+  }
+
+  const focused = snapshot.focusKey
+    ? root.querySelector(`[data-draft-key="${cssAttribute(snapshot.focusKey)}"]`)
+    : null;
+  if (focused && !focused.disabled) {
+    focused.focus({ preventScroll: true });
+    if (typeof focused.setSelectionRange === "function" && snapshot.selectionStart !== null) {
+      focused.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
+    }
+  }
+}
+
+function fieldKey(control) {
+  if (!control) return "";
+  if (control.dataset?.draftKey) return control.dataset.draftKey;
+  const question = control.closest?.("[data-question]")?.dataset.question;
+  if (question && control.name) return `question:${question}:${control.name}`;
+  if (control.dataset?.r && control.dataset?.c) return `cell:${control.dataset.r}:${control.dataset.c}`;
+  return "";
+}
+
+function cssAttribute(value) {
+  return String(value).replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
 }
 
 function normalizeCode(value) {
