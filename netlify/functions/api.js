@@ -53,6 +53,15 @@ function ok(data, status = 200) {
 }
 
 function fail(error) {
+  console.error("API error", {
+    name: error?.name,
+    message: error?.message,
+    stack: error?.stack
+  });
+  if (!(error instanceof HttpError) || error.status >= 500) {
+    return json(500, { ok: false, error: { code: "internal_error", message: "Erro interno da API." } });
+  }
+
   const status = error instanceof HttpError ? error.status : 500;
   const code = error instanceof HttpError ? error.code : "internal_error";
   const message = error instanceof HttpError ? error.message : "Erro interno da API.";
@@ -826,6 +835,54 @@ async function createLocalFileStorage() {
   };
 }
 
+function isBlobPreconditionError(error) {
+  const status = Number(error?.status || error?.statusCode || error?.response?.status);
+  if (status === 412) return true;
+
+  const code = String(error?.code || error?.cause?.code || "");
+  if (code === "PRECONDITION_FAILED" || code === "ERR_PRECONDITION_FAILED") return true;
+
+  const message = String(error?.message || "");
+  return error?.name === "BlobsInternalError" && (message.includes("412") || /pre.?condition/i.test(message));
+}
+
+function blobWriteResult(result) {
+  return { modified: result?.modified !== false };
+}
+
+export function createNetlifyBlobStorage(store) {
+  return {
+    kind: "netlify-blobs",
+    async get(key) {
+      const entry = await store.getWithMetadata(key, { type: "json", consistency: "strong" });
+      if (!entry || entry.data === null) return { data: null, etag: null };
+      return { data: entry.data, etag: entry.etag };
+    },
+    async create(key, value) {
+      try {
+        const result = await store.setJSON(key, value, { onlyIfNew: true });
+        return blobWriteResult(result);
+      } catch (error) {
+        if (isBlobPreconditionError(error)) return { modified: false };
+        throw error;
+      }
+    },
+    async set(key, value, etag) {
+      try {
+        const result = await store.setJSON(key, value, etag ? { onlyIfMatch: etag } : undefined);
+        return blobWriteResult(result);
+      } catch (error) {
+        if (isBlobPreconditionError(error)) return { modified: false };
+        throw error;
+      }
+    },
+    async delete(key) {
+      await store.delete(key);
+      return { modified: true };
+    }
+  };
+}
+
 async function createBlobStorage() {
   if (process.env.NETLIFY_DEV === "true" || process.env.ARENA_LOCAL_STORE === "1" || process.env.NODE_ENV === "test") {
     return createLocalFileStorage();
@@ -833,24 +890,7 @@ async function createBlobStorage() {
   try {
     const { getStore } = await import("@netlify/blobs");
     const store = getStore({ name: STORE_NAME, consistency: "strong" });
-    return {
-      kind: "netlify-blobs",
-      async get(key) {
-        const entry = await store.getWithMetadata(key, { type: "json", consistency: "strong" });
-        if (!entry || entry.data === null) return { data: null, etag: null };
-        return { data: entry.data, etag: entry.etag };
-      },
-      async create(key, value) {
-        return store.setJSON(key, value, { onlyIfNew: true });
-      },
-      async set(key, value, etag) {
-        return store.setJSON(key, value, etag ? { onlyIfMatch: etag } : undefined);
-      },
-      async delete(key) {
-        await store.delete(key);
-        return { modified: true };
-      }
-    };
+    return createNetlifyBlobStorage(store);
   } catch (error) {
     if (error?.name === "MissingBlobsEnvironmentError") {
       throw new HttpError(

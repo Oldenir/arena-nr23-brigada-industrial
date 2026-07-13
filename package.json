@@ -8,7 +8,7 @@
     "check": "node --check netlify/functions/api.js && node --check assets/js/team.js && node --check assets/js/instructor.js && node --test tests/*.test.js"
   },
   "dependencies": {
-    "@netlify/blobs": "^9.1.6"
+    "@netlify/blobs": "^10.7.9"
   },
   "engines": {
     "node": ">=20"

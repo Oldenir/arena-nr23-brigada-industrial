@@ -1,6 +1,71 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import handler, { createApi, createMemoryStorage } from "../netlify/functions/api.js";
+import handler, { createApi, createMemoryStorage, createNetlifyBlobStorage } from "../netlify/functions/api.js";
+
+function makeBlobStoreStub() {
+  const data = new Map();
+  let etagCounter = 0;
+  const nextEtag = () => `etag-${++etagCounter}`;
+
+  return {
+    async getWithMetadata(key) {
+      const entry = data.get(key);
+      return entry ? { data: structuredClone(entry.value), etag: entry.etag, metadata: {} } : null;
+    },
+    async setJSON(key, value, options = {}) {
+      const entry = data.get(key);
+      if (options.onlyIfNew && entry) return { modified: false };
+      if (options.onlyIfMatch && (!entry || entry.etag !== options.onlyIfMatch)) return { modified: false };
+      const etag = nextEtag();
+      data.set(key, { value: structuredClone(value), etag });
+      return { modified: true, etag };
+    },
+    async delete(key) {
+      data.delete(key);
+    }
+  };
+}
+
+test("adaptador Netlify Blobs normaliza writes condicionais", async () => {
+  const storage = createNetlifyBlobStorage(makeBlobStoreStub());
+
+  assert.deepEqual(await storage.create("session:BRG-0001", { className: "Turma A" }), { modified: true });
+  assert.deepEqual(await storage.create("session:BRG-0001", { className: "Turma B" }), { modified: false });
+
+  const loaded = await storage.get("session:BRG-0001");
+  assert.equal(loaded.data.className, "Turma A");
+
+  assert.deepEqual(await storage.set("session:BRG-0001", { className: "Turma C" }, loaded.etag), { modified: true });
+  assert.deepEqual(await storage.set("session:BRG-0001", { className: "Turma D" }, loaded.etag), { modified: false });
+  assert.deepEqual(await storage.delete("session:BRG-0001"), { modified: true });
+});
+
+test("adaptador Netlify Blobs trata apenas precondicao como conflito", async () => {
+  const preconditionError = Object.assign(new Error("Netlify Blobs internal error (412 status code)"), {
+    name: "BlobsInternalError"
+  });
+  const conflictStorage = createNetlifyBlobStorage({
+    async getWithMetadata() {
+      return null;
+    },
+    async setJSON() {
+      throw preconditionError;
+    },
+    async delete() {}
+  });
+  assert.deepEqual(await conflictStorage.create("session:BRG-0001", {}), { modified: false });
+
+  const realErrorStorage = createNetlifyBlobStorage({
+    async getWithMetadata() {
+      return null;
+    },
+    async setJSON() {
+      throw new Error("boom");
+    },
+    async delete() {}
+  });
+  await assert.rejects(() => realErrorStorage.set("session:BRG-0001", {}, "etag-1"), /boom/);
+});
 
 function makeCaller() {
   const api = createApi(createMemoryStorage());
@@ -49,6 +114,32 @@ test("health informa storage no contrato atual da API", async () => {
   assert.equal(health.status, 200);
   assert.equal(health.payload.data.status, "online");
   assert.equal(health.payload.data.storage, "memory");
+});
+
+test("sessao criada pode ser recuperada, receber equipe e ser atualizada", async () => {
+  const call = makeCaller();
+  const created = await call("POST", "/api/sessions", { className: "Turma Teste", moduleId: "nr23" });
+  assert.equal(created.status, 201);
+  assert.match(created.payload.data.session.code, /^BRG-[A-Z0-9]{4}$/);
+  assert.ok(created.payload.data.instructorToken);
+
+  const code = created.payload.data.session.code;
+  const instructorToken = created.payload.data.instructorToken;
+  const loaded = await call("GET", `/api/sessions/${code}`);
+  assert.equal(loaded.status, 200);
+  assert.equal(loaded.payload.data.session.code, code);
+
+  const alfa = await join(call, code, "Alfa");
+  assert.equal(alfa.team.name, "Alfa");
+
+  const activity = await call("POST", `/api/sessions/${code}/activity`, {
+    action: "open",
+    moduleId: "nr23",
+    activityId: "fill-blank"
+  }, { "x-instructor-token": instructorToken });
+  assert.equal(activity.status, 200);
+  assert.equal(activity.payload.data.session.activeActivityId, "fill-blank");
+  assert.equal(activity.payload.data.session.teams.length, 1);
 });
 
 test("handler moderno responde Web Response para health", async () => {
