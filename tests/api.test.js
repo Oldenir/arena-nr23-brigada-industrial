@@ -193,6 +193,63 @@ test("bloqueia palavra competitiva para apenas uma equipe", async () => {
   assert.equal(second.payload.data.result, "already_claimed");
 });
 
+test("claims competitivos expõem metadados seguros para o painel ao vivo", async () => {
+  const call = makeCaller();
+  const { code, instructorToken } = await createSession(call);
+  const alfa = await join(call, code, "Alfa");
+  await call("POST", `/api/sessions/${code}/activity`, {
+    action: "open",
+    moduleId: "nr23",
+    activityId: "word-search"
+  }, { "x-instructor-token": instructorToken });
+
+  const claimed = await call("POST", `/api/sessions/${code}/claim`, {
+    moduleId: "nr23",
+    activityId: "word-search",
+    itemId: "extintor",
+    answer: "EXTINTOR",
+    idempotencyKey: "metadata-claim-0001"
+  }, { "x-team-token": alfa.teamToken });
+
+  const claim = claimed.payload.data.session.claims["nr23:word-search:extintor"];
+  assert.equal(claim.teamName, "Alfa");
+  assert.equal(claim.term, "EXTINTOR");
+  assert.equal(claim.answer, "EXTINTOR");
+  assert.equal(claim.points, 10);
+  assert.ok(claim.clue);
+});
+
+test("erros internos não retornam stack ou caminhos ao cliente", async () => {
+  const api = createApi({
+    async create() {
+      throw new Error("C:\\segredo\\arquivo.js falhou");
+    },
+    async get() {
+      return { data: null, etag: null };
+    },
+    async set() {
+      return { modified: true };
+    },
+    async delete() {
+      return { modified: true };
+    }
+  });
+  const response = await api({
+    httpMethod: "POST",
+    path: "/api/sessions",
+    headers: {},
+    body: JSON.stringify({ className: "Turma Teste", moduleId: "nr23" })
+  });
+  const payload = JSON.parse(response.body);
+  assert.equal(response.statusCode, 500);
+  assert.deepEqual(payload.error, {
+    code: "internal_error",
+    message: "Erro interno da API."
+  });
+  assert.equal("stack" in payload.error, false);
+  assert.equal("name" in payload.error, false);
+});
+
 test("bloqueia claims simultâneos mesmo quando todos leem a mesma versão inicial", async () => {
   const storage = createMemoryStorage();
   const api = createApi({

@@ -3,27 +3,27 @@ import { getTeamCredential, saveTeamCredential } from "./state.js";
 import { query, replaceQuery } from "./router.js";
 import { renderRanking } from "./ranking.js";
 import { $, describeError, escapeHTML, setStatus, toast } from "./utils.js";
-import { renderActivity as renderWordSearch } from "./activities/word-search.js";
-import { renderActivity as renderCrossword } from "./activities/crossword.js";
-import { renderActivity as renderTrueFalse } from "./activities/true-false.js";
-import { renderActivity as renderFireClass } from "./activities/fire-class.js";
-import { renderActivity as renderExtinguisher } from "./activities/extinguisher.js";
-import { renderActivity as renderFillBlank } from "./activities/fill-blank.js";
-import { renderActivity as renderSafeSequence } from "./activities/safe-sequence.js";
-import { renderActivity as renderInspection } from "./activities/inspection.js";
-import { renderActivity as renderIndustrialEmergency } from "./activities/industrial-emergency.js";
-import { renderActivity as renderFirstAid } from "./activities/first-aid.js";
+import * as wordSearchActivity from "./activities/word-search.js";
+import * as crosswordActivity from "./activities/crossword.js";
+import * as trueFalseActivity from "./activities/true-false.js";
+import * as fireClassActivity from "./activities/fire-class.js";
+import * as extinguisherActivity from "./activities/extinguisher.js";
+import * as fillBlankActivity from "./activities/fill-blank.js";
+import * as safeSequenceActivity from "./activities/safe-sequence.js";
+import * as inspectionActivity from "./activities/inspection.js";
+import * as industrialEmergencyActivity from "./activities/industrial-emergency.js";
+import * as firstAidActivity from "./activities/first-aid.js";
 
 const renderers = {
-  "word-search": renderWordSearch,
-  crossword: renderCrossword,
-  "true-false": renderTrueFalse,
-  "fire-class": renderFireClass,
-  extinguisher: renderExtinguisher,
-  "fill-blank": renderFillBlank,
-  "safe-sequence": renderSafeSequence,
-  inspection: renderInspection,
-  "industrial-emergency": renderIndustrialEmergency
+  "word-search": wordSearchActivity,
+  crossword: crosswordActivity,
+  "true-false": trueFalseActivity,
+  "fire-class": fireClassActivity,
+  extinguisher: extinguisherActivity,
+  "fill-blank": fillBlankActivity,
+  "safe-sequence": safeSequenceActivity,
+  inspection: inspectionActivity,
+  "industrial-emergency": industrialEmergencyActivity
 };
 
 const identities = [
@@ -41,6 +41,7 @@ let code = "";
 let teamToken = "";
 let session = null;
 let pollTimer = null;
+const draftState = {};
 
 init();
 
@@ -140,36 +141,95 @@ function renderRoom() {
 function renderStage() {
   const stage = $("#activeActivity");
   if (session.status !== "open") {
-    stage.innerHTML = "<h2>Sessão encerrada</h2><p>O instrutor encerrou esta sessão.</p>";
+    clearAllDrafts();
+    renderStageMessage(stage, "session-closed", "<h2>Sessão encerrada</h2><p>O instrutor encerrou esta sessão.</p>");
     return;
   }
+
   const activity = session.catalog.activities.find((item) => item.id === session.activeActivityId);
   if (!activity || session.activityStatus === "waiting") {
-    stage.innerHTML = "<h2>Sala de espera</h2><p>Aguarde o instrutor liberar uma atividade.</p>";
+    renderStageMessage(stage, `waiting:${session.code}:${session.activeModule}`, "<h2>Sala de espera</h2><p>Aguarde o instrutor liberar uma atividade.</p>");
     return;
   }
   if (session.activityStatus === "paused") {
-    stage.innerHTML = `<h2>${escapeHTML(activity.title)}</h2><p>Atividade pausada pelo instrutor.</p>`;
+    renderStageMessage(stage, `paused:${activityRenderKey(session, activity)}`, `<h2>${escapeHTML(activity.title)}</h2><p>Atividade pausada pelo instrutor.</p>`);
     return;
   }
   if (session.activityStatus === "closed" || session.activityStatus === "selected") {
-    stage.innerHTML = `<h2>${escapeHTML(activity.title)}</h2><p>Aguardando liberação do instrutor.</p>`;
+    renderStageMessage(stage, `selected:${activityRenderKey(session, activity)}`, `<h2>${escapeHTML(activity.title)}</h2><p>Aguardando liberação do instrutor.</p>`);
     return;
   }
-  const renderer = renderers[activity.id] || (session.activeModule === "first-aid" ? renderFirstAid : null);
-  if (!renderer) {
-    stage.innerHTML = "<h2>Atividade indisponível</h2><p>O módulo desta atividade não foi carregado.</p>";
+
+  const renderer = renderers[activity.id] || (session.activeModule === "first-aid" ? firstAidActivity : null);
+  if (!renderer?.renderActivity) {
+    renderStageMessage(stage, `missing:${activity.id}`, "<h2>Atividade indisponível</h2><p>O módulo desta atividade não foi carregado.</p>");
     return;
   }
-  renderer({
+
+  const key = activityRenderKey(session, activity);
+  const ctx = activityContext(stage, activity);
+  if (stage.dataset.activityRenderKey !== key) {
+    renderer.renderActivity(ctx);
+    stage.dataset.activityRenderKey = key;
+    stage.dataset.stageMessageKey = "";
+    return;
+  }
+  renderer.updateActivity?.(ctx);
+}
+
+function renderStageMessage(stage, key, html) {
+  if (stage.dataset.stageMessageKey === key) return;
+  stage.dataset.stageMessageKey = key;
+  stage.dataset.activityRenderKey = "";
+  stage.innerHTML = html;
+}
+
+function activityContext(stage, activity) {
+  return {
     root: stage,
     code,
     teamToken,
     session,
     moduleId: session.activeModule,
     activity,
-    updateSession
-  });
+    draftActivity: getActivityDraft(session.activeModule, activity.id),
+    updateSession,
+    clearQuestionDraft: (questionId) => clearQuestionDraft(session.activeModule, activity.id, questionId),
+    clearActivityDraft: () => clearActivityDraft(session.activeModule, activity.id)
+  };
+}
+
+function activityRenderKey(currentSession, activity) {
+  return [
+    currentSession.code,
+    currentSession.activeModule,
+    currentSession.activeActivityId,
+    currentSession.activityStatus,
+    activity?.id || "",
+    activity?.type || "",
+    activity?.hint || "",
+    activity?.questions?.length || 0,
+    activity?.words?.length || 0,
+    activity?.entries?.length || 0
+  ].join(":");
+}
+
+function getActivityDraft(moduleId, activityId) {
+  draftState[moduleId] ||= {};
+  draftState[moduleId][activityId] ||= {};
+  return draftState[moduleId][activityId];
+}
+
+function clearQuestionDraft(moduleId, activityId, questionId) {
+  if (draftState[moduleId]?.[activityId]) delete draftState[moduleId][activityId][questionId];
+}
+
+function clearActivityDraft(moduleId, activityId) {
+  if (draftState[moduleId]) delete draftState[moduleId][activityId];
+}
+
+function clearAllDrafts() {
+  for (const key of Object.keys(draftState)) delete draftState[key];
 }
 
 function normalizeCode(value) {

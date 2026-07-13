@@ -52,7 +52,7 @@
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -129,15 +129,69 @@
 
 .activity-list {
   display: grid;
-  gap: 8px;
-  max-height: 420px;
-  overflow: auto;
+  gap: 12px;
+  max-height: min(54vh, 560px);
+  overflow-y: auto;
+  padding: 2px 6px 8px 2px;
+  scrollbar-width: thin;
 }
 
 .activity-list button {
   display: grid;
-  gap: 4px;
+  gap: 8px;
+  align-content: start;
+  min-height: auto;
+  padding: 14px;
   text-align: left;
+  line-height: 1.35;
+  box-shadow: none;
+}
+
+.activity-card-title {
+  display: block;
+  font-weight: 850;
+}
+
+.activity-card-desc {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.activity-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 22px;
+}
+
+.activity-card-meta em {
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 850;
+  color: #1b1200;
+  background: var(--yellow);
+}
+
+.activity-list .activity-card.active {
+  color: var(--text);
+  border-color: var(--yellow);
+  background: linear-gradient(180deg, rgba(255, 210, 74, 0.22), rgba(255, 255, 255, 0.07));
+  box-shadow: 0 8px 20px rgba(255, 210, 74, 0.12);
+}
+
+.activity-list .activity-card.is-open .activity-card-meta em:last-child {
+  color: #031b10;
+  background: #68e493;
+}
+
+.activity-list .activity-card.is-paused .activity-card-meta em:last-child {
+  color: #111318;
+  background: #ffcf7a;
 }
 
 .activity-list small {
@@ -245,6 +299,133 @@
   color: var(--muted);
 }
 
+.activity-monitor {
+  display: grid;
+  gap: 14px;
+}
+
+.monitor-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.monitor-header h2,
+.monitor-header p {
+  margin: 0;
+}
+
+.monitor-header p,
+.monitor-state {
+  color: var(--muted);
+}
+
+.monitor-header strong {
+  border: 1px solid rgba(255, 210, 74, 0.45);
+  border-radius: 999px;
+  padding: 6px 12px;
+  color: #1b1200;
+  background: var(--yellow);
+}
+
+.monitor-word-layout,
+.monitor-crossword-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(280px, 1.1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.monitor-word-grid,
+.monitor-cross-grid {
+  display: grid;
+  gap: 3px;
+  width: min(100%, 620px);
+}
+
+.monitor-word-grid {
+  grid-template-columns: repeat(var(--grid-size), minmax(0, 1fr));
+}
+
+.monitor-cross-grid {
+  grid-template-columns: repeat(var(--cross-cols), minmax(20px, 1fr));
+}
+
+.monitor-word-grid span,
+.monitor-cross-grid span {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-weight: 850;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.monitor-word-grid span.claimed,
+.monitor-cross-grid span.claimed,
+.monitor-claim.claimed,
+.monitor-team-summary span,
+.monitor-progress-list article {
+  color: var(--team-text, #ffffff);
+  border-color: color-mix(in srgb, var(--team-color, #68e493), #ffffff 35%);
+  background: color-mix(in srgb, var(--team-color, #68e493), #10141a 26%);
+}
+
+.monitor-cross-grid span.blocked {
+  border-color: transparent;
+  background: #080a0c;
+}
+
+.monitor-cross-grid small {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  color: var(--yellow);
+  font-size: 0.58rem;
+}
+
+.monitor-list,
+.monitor-progress-list {
+  display: grid;
+  gap: 10px;
+  max-height: 540px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.monitor-claim,
+.monitor-progress-list article {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.monitor-claim span,
+.monitor-claim small {
+  color: inherit;
+  opacity: 0.86;
+}
+
+.monitor-team-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.monitor-team-summary span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 850;
+}
+
 .confirm-dialog {
   width: min(420px, calc(100vw - 32px));
   border: 0;
@@ -297,6 +478,13 @@
 
   .metric-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .monitor-word-layout,
+  .monitor-crossword-layout {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -17,6 +17,8 @@ function team(id, name) {
 test("normaliza respostas com acentos, caixa e espaços", () => {
   assert.equal(normalizeText("  Resfriamento  "), "RESFRIAMENTO");
   assert.equal(normalizeCompact("prevenção de incêndios"), "PREVENCAODEINCENDIOS");
+  assert.equal(normalizeCompact("  rota-de fuga!!! "), "ROTADEFUGA");
+  assert.equal(normalizeText("maçã, ação e número 23"), "MACA ACAO E NUMERO 23");
 });
 
 test("ranking desempata por pontos, acertos, erros, tempo e chegada", () => {

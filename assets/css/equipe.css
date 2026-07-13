@@ -189,8 +189,10 @@
 }
 
 .letter-cell.found {
-  color: #031b10;
-  background: #68e493;
+  color: var(--claim-text, #031b10);
+  border-color: color-mix(in srgb, var(--claim-color, #68e493), #ffffff 35%);
+  background: var(--claim-color, #68e493);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.28);
 }
 
 .word-list {
@@ -207,8 +209,9 @@
 }
 
 .word-chip.claimed {
-  border-color: rgba(47, 183, 110, 0.4);
-  color: #d7ffe7;
+  border-color: color-mix(in srgb, var(--claim-color, #68e493), #ffffff 35%);
+  color: var(--claim-text, #d7ffe7);
+  background: var(--claim-color, rgba(47, 183, 110, 0.28));
 }
 
 .crossword-wrap {
@@ -244,6 +247,20 @@
   text-transform: uppercase;
   font-weight: 850;
   border-radius: 4px;
+}
+
+.cross-cell.claimed input,
+.cross-cell input:disabled {
+  opacity: 1;
+  color: var(--claim-text, #111318);
+  border-color: color-mix(in srgb, var(--claim-color, #68e493), #ffffff 35%);
+  background: var(--claim-color, #68e493);
+}
+
+.crossword-clue.is-claimed {
+  border-color: color-mix(in srgb, var(--claim-color, #68e493), #ffffff 35%);
+  color: var(--claim-text, #ffffff);
+  background: color-mix(in srgb, var(--claim-color, #68e493), #10141a 34%);
 }
 
 .cross-cell small {

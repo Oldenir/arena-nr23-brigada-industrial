@@ -52,14 +52,6 @@ function ok(data, status = 200) {
   return json(status, { ok: true, data });
 }
 
-function errorDetails(error) {
-  return {
-    name: error?.name || typeof error,
-    message: error?.message || String(error),
-    stack: error?.stack || null
-  };
-}
-
 function fail(error) {
   console.error("API error", {
     name: error?.name,
@@ -70,8 +62,8 @@ function fail(error) {
 
   const status = error instanceof HttpError ? error.status : 500;
   const code = error instanceof HttpError ? error.code : "internal_error";
-  const details = errorDetails(error);
-  return json(status, { ok: false, error: { code, ...details } });
+  const message = error instanceof HttpError ? error.message : "Erro interno da API.";
+  return json(status, { ok: false, error: { code, message } });
 }
 
 function toWebResponse(response) {
@@ -263,13 +255,24 @@ function progressForTeam(session, team, moduleId) {
 function publicClaims(session) {
   const output = {};
   for (const [key, claim] of Object.entries(session.claims || {})) {
+    const activity = getActivity(claim.moduleId, claim.activityId);
+    const item = findClaimItem(activity, claim.itemId);
+    const label = item?.term || (item?.number ? `${item.number} ${item.direction === "across" ? "Horizontal" : "Vertical"}` : item?.id || claim.itemId);
     output[key] = {
       moduleId: claim.moduleId,
       activityId: claim.activityId,
       itemId: claim.itemId,
       teamId: claim.teamId,
       teamName: claim.teamName,
-      at: claim.at
+      at: claim.at,
+      kind: claim.kind,
+      label,
+      term: item?.term || null,
+      answer: ["word-search", "crossword"].includes(activity?.type) ? (item?.answer || item?.term || null) : null,
+      clue: item?.clue || null,
+      number: item?.number || null,
+      direction: item?.direction || null,
+      points: Number(activity?.points || 0)
     };
   }
   return output;
@@ -559,7 +562,9 @@ function claimRoute(session, event, payload) {
       action: "Conquista competitiva",
       points: activity.points,
       attemptId: idempotencyKey,
-      detail: item.term || item.answer || itemId
+      detail: activity.type === "crossword"
+        ? `${item.number} ${item.direction === "across" ? "Horizontal" : "Vertical"}: ${item.answer}`
+        : item.term || item.answer || itemId
     });
     return {
       body: {

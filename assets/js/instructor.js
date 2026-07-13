@@ -4,6 +4,8 @@ import { query, replaceQuery } from "./router.js";
 import { renderPodium, renderRanking } from "./ranking.js";
 import { renderQr } from "./qr.js";
 import { $, $$, describeError, escapeHTML, formatDateTime, formatTime, setStatus, teamUrl, toast } from "./utils.js";
+import { WORD_SEARCH_SIZE, buildGrid as buildWordGrid, contrastColor, findWordPath } from "./activities/word-search.js";
+import { buildCells as buildCrosswordCells } from "./activities/crossword.js";
 
 let code = "";
 let instructorToken = "";
@@ -114,6 +116,7 @@ function renderDashboard() {
   renderActivities();
   renderPodium($("#podium"), session.ranking);
   renderRanking($("#ranking"), session.ranking);
+  renderActivityMonitor();
   renderTeams();
   renderHistory();
   renderScoreSelect();
@@ -126,12 +129,21 @@ function renderModuleButtons() {
 }
 
 function renderActivities() {
-  $("#activityList").innerHTML = session.catalog.activities.map((activity) => `
-    <button type="button" data-activity="${activity.id}" class="${activity.id === selectedActivityId ? "active" : ""}">
-      <strong>${escapeHTML(activity.title)}</strong>
-      <small>${escapeHTML(activity.subtitle || `${activity.points || 0} pontos`)}</small>
+  $("#activityList").innerHTML = session.catalog.activities.map((activity) => {
+    const isSelected = activity.id === selectedActivityId;
+    const isActive = activity.id === session.activeActivityId;
+    const statusLabel = isActive ? activityStatusLabel(session.activityStatus) : "";
+    return `
+    <button type="button" data-activity="${activity.id}" class="activity-card ${isSelected ? "active" : ""} ${isActive ? `is-${session.activityStatus}` : ""}">
+      <span class="activity-card-title">${escapeHTML(activity.title)}</span>
+      <span class="activity-card-desc">${escapeHTML(activity.subtitle || `${activity.points || 0} pontos`)}</span>
+      <span class="activity-card-meta">
+        ${isSelected ? "<em>Selecionada</em>" : ""}
+        ${statusLabel ? `<em>${statusLabel}</em>` : ""}
+      </span>
     </button>
-  `).join("");
+  `;
+  }).join("");
   $$("#activityList [data-activity]").forEach((button) => {
     button.addEventListener("click", () => {
       selectedActivityId = button.dataset.activity;
@@ -139,6 +151,14 @@ function renderActivities() {
       renderActivities();
     });
   });
+}
+
+function activityStatusLabel(status) {
+  if (status === "open") return "Liberada";
+  if (status === "paused") return "Pausada";
+  if (status === "closed") return "Encerrada";
+  if (status === "selected") return "Selecionada";
+  return "";
 }
 
 function renderTeams() {
@@ -162,11 +182,208 @@ function renderTeams() {
 function renderHistory() {
   $("#historyList").innerHTML = session.history.length ? session.history.map((item) => `
     <article class="history-item">
-      <strong>${escapeHTML(item.action)} ${item.points ? `(${item.points > 0 ? "+" : ""}${item.points})` : ""}</strong>
-      <span>${escapeHTML(item.teamName || "Instrutor")} - ${escapeHTML(item.detail || "")}</span>
-      <small>${formatDateTime(item.at)} - ${escapeHTML(item.attemptId || item.id)}</small>
+      <strong>${escapeHTML(formatHistoryTitle(item))}</strong>
+      <span>${escapeHTML(formatHistoryDetail(item))}</span>
+      <small>${formatDateTime(item.at)}</small>
     </article>
   `).join("") : "<p class=\"empty\">Sem registros ainda.</p>";
+}
+
+function renderActivityMonitor() {
+  const root = $("#activityMonitor");
+  const activity = activeActivity();
+  if (!activity) {
+    root.innerHTML = `
+      <h2>Acompanhamento ao vivo</h2>
+      <p class="empty">Aguardando seleção de atividade.</p>
+    `;
+    return;
+  }
+  if (activity.type === "word-search") {
+    root.innerHTML = renderWordSearchMonitor(activity);
+    return;
+  }
+  if (activity.type === "crossword") {
+    root.innerHTML = renderCrosswordMonitor(activity);
+    return;
+  }
+  root.innerHTML = renderGenericMonitor(activity);
+}
+
+function renderWordSearchMonitor(activity) {
+  const grid = buildWordGrid(activity.words);
+  const claimed = activity.words.map((word) => ({
+    word,
+    claim: claimFor(activity.id, word.id),
+    path: claimFor(activity.id, word.id) ? findWordPath(grid, word.term) : []
+  }));
+  const byCell = new Map();
+  claimed.forEach((item) => {
+    if (!item.claim) return;
+    item.path.forEach(([r, c]) => byCell.set(`${r}:${c}`, item));
+  });
+  const total = activity.words.length;
+  const done = claimed.filter((item) => item.claim).length;
+  return `
+    <div class="monitor-header">
+      <div>
+        <h2>Caça-palavras ao vivo</h2>
+        <p>${done ? `${done} de ${total} palavras conquistadas.` : "Aguardando primeira palavra."}</p>
+      </div>
+      <strong>${done}/${total}</strong>
+    </div>
+    <div class="monitor-word-layout">
+      <div class="monitor-word-grid" style="--grid-size:${WORD_SEARCH_SIZE}" aria-label="Caça-palavras somente leitura">
+        ${grid.flatMap((row, r) => row.map((letter, c) => {
+          const item = byCell.get(`${r}:${c}`);
+          return `<span class="${item ? "claimed" : ""}" ${item ? teamStyle(item.claim.teamId) : ""} title="${item ? escapeHTML(`${item.word.term} - ${item.claim.teamName}`) : ""}">${letter}</span>`;
+        })).join("")}
+      </div>
+      <div class="monitor-list">
+        ${claimed.map(({ word, claim }) => `
+          <article class="monitor-claim ${claim ? "claimed" : ""}" ${claim ? teamStyle(claim.teamId) : ""}>
+            <strong>${escapeHTML(word.term)}</strong>
+            <span>${claim ? `${escapeHTML(claim.teamName)} · ${formatDateTime(claim.at)} · +${claim.points || activity.points}` : escapeHTML(word.clue)}</span>
+          </article>
+        `).join("")}
+      </div>
+    </div>
+    ${renderClaimTeamSummary(activity)}
+  `;
+}
+
+function renderCrosswordMonitor(activity) {
+  const cells = buildCrosswordCells(activity);
+  const total = activity.entries.length;
+  const done = activity.entries.filter((entry) => claimFor(activity.id, entry.id)).length;
+  return `
+    <div class="monitor-header">
+      <div>
+        <h2>Cruzadinha ao vivo</h2>
+        <p>${done ? `${done} de ${total} respostas conquistadas.` : "Aguardando respostas."}</p>
+      </div>
+      <strong>${done}/${total}</strong>
+    </div>
+    <div class="monitor-crossword-layout">
+      <div class="monitor-cross-grid" style="--cross-cols:${activity.cols}" aria-label="Cruzadinha somente leitura">
+        ${renderMonitorCrosswordCells(activity, cells)}
+      </div>
+      <div class="monitor-list">
+        ${activity.entries.map((entry) => {
+          const claim = claimFor(activity.id, entry.id);
+          return `
+            <article class="monitor-claim ${claim ? "claimed" : ""}" ${claim ? teamStyle(claim.teamId) : ""}>
+              <strong>${entry.number}. ${entry.direction === "across" ? "Horizontal" : "Vertical"}</strong>
+              <span>${escapeHTML(entry.clue)}</span>
+              <small>${claim ? `${escapeHTML(claim.teamName)} · ${formatDateTime(claim.at)} · +${claim.points || activity.points}` : "Disponível"}</small>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </div>
+    ${renderClaimTeamSummary(activity)}
+  `;
+}
+
+function renderMonitorCrosswordCells(activity, cells) {
+  const html = [];
+  for (let row = 0; row < activity.rows; row += 1) {
+    for (let col = 0; col < activity.cols; col += 1) {
+      const cell = cells.get(`${row}:${col}`);
+      if (!cell) {
+        html.push(`<span class="blocked"></span>`);
+        continue;
+      }
+      const filled = monitorCrosswordCell(activity, cell);
+      html.push(`
+        <span class="${filled ? "claimed" : ""}" ${filled ? teamStyle(filled.claim.teamId) : ""}>
+          ${cell.numbers.length ? `<small>${cell.numbers.join("/")}</small>` : ""}
+          ${filled ? escapeHTML(filled.letter) : ""}
+        </span>
+      `);
+    }
+  }
+  return html.join("");
+}
+
+function monitorCrosswordCell(activity, cell) {
+  for (const entryId of cell.entries) {
+    const entry = activity.entries.find((item) => item.id === entryId);
+    const claim = claimFor(activity.id, entryId);
+    if (!entry || !claim?.answer) continue;
+    const index = entry.direction === "down" ? cell.row - entry.row : cell.col - entry.col;
+    const letter = String(claim.answer || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase()[index];
+    if (letter) return { letter, claim };
+  }
+  return null;
+}
+
+function renderGenericMonitor(activity) {
+  const progress = Object.entries(session.progress || {});
+  return `
+    <div class="monitor-header">
+      <div>
+        <h2>Acompanhamento ao vivo</h2>
+        <p>${escapeHTML(activity.title)}</p>
+      </div>
+      <strong>${activityStatusLabel(session.activityStatus) || "Aguardando"}</strong>
+    </div>
+    <div class="monitor-progress-list">
+      ${progress.length ? progress.map(([teamId, item]) => {
+        const team = session.teams.find((candidate) => candidate.id === teamId);
+        return `
+          <article ${team ? teamStyle(team.id) : ""}>
+            <strong>${escapeHTML(team?.name || "Equipe")}</strong>
+            <span>${item.completed}/${item.total} itens finalizados</span>
+            <div class="progress-bar"><span style="width:${item.percent}%"></span></div>
+          </article>
+        `;
+      }).join("") : "<p class=\"empty\">Aguardando equipes.</p>"}
+    </div>
+  `;
+}
+
+function renderClaimTeamSummary(activity) {
+  const claims = Object.values(session.claims || {}).filter((claim) => claim.moduleId === session.activeModule && claim.activityId === activity.id);
+  if (!claims.length) return "<p class=\"monitor-state\">Nenhuma conquista registrada ainda.</p>";
+  const byTeam = new Map();
+  claims.forEach((claim) => {
+    const current = byTeam.get(claim.teamId) || { teamId: claim.teamId, teamName: claim.teamName, count: 0, points: 0 };
+    current.count += 1;
+    current.points += Number(claim.points || activity.points || 0);
+    byTeam.set(claim.teamId, current);
+  });
+  return `
+    <div class="monitor-team-summary">
+      ${[...byTeam.values()].map((entry) => `
+        <span ${teamStyle(entry.teamId)}>${escapeHTML(entry.teamName)}: ${entry.count} itens · ${entry.points} pts</span>
+      `).join("")}
+    </div>
+  `;
+}
+
+function claimFor(activityId, itemId) {
+  return session.claims?.[`${session.activeModule}:${activityId}:${itemId}`] || null;
+}
+
+function teamStyle(teamId) {
+  const team = session.teams.find((item) => item.id === teamId);
+  const color = team?.color || "#68e493";
+  return `style="--team-color:${escapeHTML(color)}; --team-text:${contrastColor(color)}"`;
+}
+
+function formatHistoryTitle(item) {
+  const points = item.points ? ` (${item.points > 0 ? "+" : ""}${item.points})` : "";
+  if (item.action === "Conquista competitiva") return `${item.teamName || "Equipe"} conquistou ${item.detail}${points}`;
+  if (item.action === "Resposta correta") return `${item.teamName || "Equipe"} acertou${points}`;
+  if (item.action === "Resposta incorreta") return `${item.teamName || "Equipe"} finalizou sem pontuar`;
+  if (item.action === "Tentativa incorreta") return `${item.teamName || "Equipe"} tentou responder`;
+  return `${item.action}${points}`;
+}
+
+function formatHistoryDetail(item) {
+  const activity = session.catalog.activities.find((candidate) => candidate.id === item.activityId);
+  return `${activity?.title || item.activityId || "Atividade"}${item.detail ? ` · ${item.detail}` : ""}`;
 }
 
 function renderScoreSelect() {
