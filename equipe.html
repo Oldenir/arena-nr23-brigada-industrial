@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111318">
+    <title>Equipe - ARENA SL</title>
+    <link rel="stylesheet" href="/assets/css/global.css">
+    <link rel="stylesheet" href="/assets/css/equipe.css">
+    <script type="module" src="/assets/js/team.js"></script>
+  </head>
+  <body>
+    <header class="team-header">
+      <a class="brand compact-brand" href="/">
+        <img src="/assets/images/arena-shield.svg" alt="" width="44" height="44">
+        <span>
+          <strong>ARENA SL</strong>
+          <small>NR 23 - Brigada Industrial</small>
+        </span>
+      </a>
+      <span id="connectionStatus" class="status-chip">sincronizando</span>
+    </header>
+
+    <main class="team-shell">
+      <section id="joinPanel" class="join-panel">
+        <p class="eyebrow">Entrada da equipe</p>
+        <h1>Conectar à sessão</h1>
+        <form id="joinForm" class="join-form">
+          <label>
+            Código da sessão
+            <input name="code" type="text" maxlength="12" required placeholder="BRG-4821">
+          </label>
+          <label>
+            Nome da equipe
+            <input name="name" type="text" minlength="2" maxlength="50" required placeholder="Ex.: Equipe Alfa">
+          </label>
+          <label>
+            Integrantes
+            <textarea name="members" maxlength="160" rows="3" placeholder="Opcional"></textarea>
+          </label>
+          <fieldset>
+            <legend>Cor ou símbolo</legend>
+            <div id="identityChoices" class="identity-choices"></div>
+          </fieldset>
+          <button class="button primary full" type="submit">Entrar na arena</button>
+        </form>
+      </section>
+
+      <section id="roomPanel" class="room-panel hidden">
+        <div class="room-top">
+          <div>
+            <p class="eyebrow" id="moduleLabel">Brigada Industrial</p>
+            <h1 id="teamName">Equipe</h1>
+            <p id="sessionInfo">Aguardando instrutor</p>
+          </div>
+          <div class="score-pill"><span id="teamScore">0</span><small>pontos</small></div>
+        </div>
+
+        <div id="firstAidNotice" class="notice hidden">
+          Este jogo reforça o conteúdo do treinamento e não substitui avaliação prática, protocolos locais ou atendimento profissional.
+        </div>
+
+        <section id="activeActivity" class="activity-stage" aria-live="polite">
+          <h2>Sala de espera</h2>
+          <p>Aguarde o instrutor liberar uma atividade.</p>
+        </section>
+
+        <section class="mobile-ranking">
+          <h2>Ranking</h2>
+          <div id="ranking" class="ranking-table compact-ranking"></div>
+        </section>
+      </section>
+      <div id="toast" class="toast" role="status"></div>
+    </main>
+  </body>
+</html>

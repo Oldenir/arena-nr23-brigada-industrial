@@ -1,0 +1,60 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+  command = ""
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/data/*"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/netlify/*"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/tests/*"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/instrutor"
+  to = "/instrutor.html"
+  status = 200
+
+[[redirects]]
+  from = "/equipe"
+  to = "/equipe.html"
+  status = 200
+
+[[redirects]]
+  from = "/instrutor.html"
+  to = "/instrutor.html"
+  status = 200
+
+[[redirects]]
+  from = "/equipe.html"
+  to = "/equipe.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "same-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

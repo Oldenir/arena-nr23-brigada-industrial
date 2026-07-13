@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Escudo ARENA SL</title>
+  <desc id="desc">Escudo industrial com chama e faixa de segurança.</desc>
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7f7f7"/>
+      <stop offset="0.45" stop-color="#9aa3ad"/>
+      <stop offset="1" stop-color="#323842"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd84d"/>
+      <stop offset="0.55" stop-color="#ff3b30"/>
+      <stop offset="1" stop-color="#9b111e"/>
+    </linearGradient>
+  </defs>
+  <path fill="#111318" d="M64 4 112 22v34c0 32-19 56-48 68C35 112 16 88 16 56V22L64 4Z"/>
+  <path fill="url(#metal)" d="M64 13 103 28v28c0 26-15 46-39 57-24-11-39-31-39-57V28l39-15Z"/>
+  <path fill="#171b20" d="M34 35h60v16H34z"/>
+  <path fill="#ffd84d" d="m38 35 7 16h10l-7-16zm22 0 7 16h10l-7-16zm22 0 7 16h5V40l-2-5z"/>
+  <path fill="url(#flame)" d="M65 89c-12 0-22-8-22-20 0-8 5-15 12-20-1 8 4 11 7 14 1-12 12-20 13-31 10 10 12 21 6 31 5-1 8-4 10-8 4 19-8 34-26 34Z"/>
+  <path fill="#fff5bf" d="M65 83c-6 0-11-4-11-10 0-5 3-8 7-11 0 5 3 7 5 9 1-6 6-10 7-16 5 6 5 16-1 21 3 0 5-1 7-3-2 6-7 10-14 10Z"/>
+  <path fill="#111318" d="M41 98h46v8H41z"/>
+  <path fill="#ffd84d" d="M48 99h32v5H48z"/>
+</svg>

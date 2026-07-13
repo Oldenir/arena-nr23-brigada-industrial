@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111318">
+    <title>Central do Instrutor - ARENA SL</title>
+    <link rel="stylesheet" href="/assets/css/global.css">
+    <link rel="stylesheet" href="/assets/css/instrutor.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" defer></script>
+    <script type="module" src="/assets/js/instructor.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="/">
+        <img src="/assets/images/arena-shield.svg" alt="" width="54" height="54">
+        <span>
+          <strong>ARENA SL TREINAMENTOS</strong>
+          <small>NR 23 - BRIGADA INDUSTRIAL</small>
+        </span>
+      </a>
+      <div class="header-actions">
+        <span id="apiStatus" class="status-chip">sincronizando</span>
+        <p class="instructor-id">INSTRUTOR: OLDENIR</p>
+      </div>
+    </header>
+
+    <main class="instructor-shell">
+      <section class="session-setup" id="sessionSetup" aria-labelledby="setupTitle">
+        <div>
+          <p class="eyebrow">Central do instrutor</p>
+          <h1 id="setupTitle">Criar ou reabrir sessão</h1>
+          <p>O token administrativo fica salvo somente neste navegador após a criação da sessão.</p>
+        </div>
+        <form id="createSessionForm" class="setup-form">
+          <label>
+            Nome da turma
+            <input name="className" type="text" minlength="3" maxlength="80" required placeholder="Ex.: Brigada Turno A">
+          </label>
+          <label>
+            Módulo inicial
+            <select name="moduleId">
+              <option value="nr23">Brigada Industrial</option>
+              <option value="first-aid">Primeiros Socorros</option>
+            </select>
+          </label>
+          <button class="button primary" type="submit">Criar nova sessão</button>
+        </form>
+        <form id="openSessionForm" class="setup-form compact">
+          <label>
+            Código da sessão
+            <input name="code" type="text" maxlength="12" placeholder="BRG-4821">
+          </label>
+          <button class="button secondary" type="submit">Abrir sessão existente</button>
+        </form>
+      </section>
+
+      <section id="dashboard" class="dashboard hidden" aria-live="polite">
+        <div class="dashboard-top">
+          <div>
+            <p class="eyebrow" id="sessionStatus">Sessão aberta</p>
+            <h1 id="sessionTitle">Turma</h1>
+            <p id="sessionMeta">Código</p>
+          </div>
+          <div class="quick-actions">
+            <button id="copyLinkBtn" class="icon-button" type="button" title="Copiar link da equipe">Copiar link</button>
+            <button id="finishSessionBtn" class="button danger" type="button">Encerrar sessão</button>
+            <button id="deleteSessionBtn" class="button ghost" type="button">Apagar sessão</button>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <aside class="control-panel">
+            <section class="panel-block">
+              <h2>Acesso das equipes</h2>
+              <canvas id="qrCanvas" class="qr-canvas" width="220" height="220" aria-label="QR Code da sessão"></canvas>
+              <a id="teamLink" class="public-link" href="/equipe.html">/equipe.html</a>
+            </section>
+
+            <section class="panel-block">
+              <h2>Módulo</h2>
+              <div class="segmented" role="group" aria-label="Selecionar módulo">
+                <button data-module-switch="nr23" type="button">Brigada Industrial</button>
+                <button data-module-switch="first-aid" type="button">Primeiros Socorros</button>
+              </div>
+            </section>
+
+            <section class="panel-block">
+              <h2>Atividades</h2>
+              <div id="activityList" class="activity-list"></div>
+              <div class="activity-actions">
+                <button id="openActivityBtn" class="button primary" type="button">Liberar atividade</button>
+                <button id="pauseActivityBtn" class="button secondary" type="button">Pausar</button>
+                <button id="closeActivityBtn" class="button secondary" type="button">Encerrar atividade</button>
+                <button id="hintBtn" class="button ghost" type="button">Revelar dica</button>
+              </div>
+            </section>
+
+            <section class="panel-block">
+              <h2>Ajustes manuais</h2>
+              <form id="manualScoreForm" class="score-form">
+                <label>
+                  Equipe
+                  <select name="teamId" required></select>
+                </label>
+                <label>
+                  Pontos
+                  <input name="points" type="number" min="-100" max="100" value="5" required>
+                </label>
+                <label>
+                  Motivo
+                  <input name="reason" type="text" maxlength="80" placeholder="Bônus por procedimento seguro">
+                </label>
+                <div class="button-row">
+                  <button class="button primary" name="mode" value="bonus" type="submit">Aplicar bônus</button>
+                  <button class="button danger" name="mode" value="penalty" type="submit">Aplicar penalidade</button>
+                </div>
+              </form>
+              <button id="resetRankingBtn" class="button secondary full" type="button">Zerar ranking do módulo</button>
+              <button id="restartSessionBtn" class="button ghost full" type="button">Reiniciar competição</button>
+            </section>
+          </aside>
+
+          <section class="live-panel">
+            <div class="metric-row">
+              <div class="metric"><span id="teamCount">0</span><small>Equipes</small></div>
+              <div class="metric"><span id="activeActivityLabel">Nenhuma</span><small>Atividade ativa</small></div>
+              <div class="metric"><span id="syncTime">--:--</span><small>Última sincronização</small></div>
+            </div>
+
+            <section class="panel-block podium-block">
+              <h2>Pódio</h2>
+              <div id="podium" class="podium"></div>
+            </section>
+
+            <section class="panel-block">
+              <h2>Ranking ao vivo</h2>
+              <div id="ranking" class="ranking-table"></div>
+            </section>
+
+            <section class="panel-block">
+              <h2>Equipes e progresso</h2>
+              <div id="teamList" class="team-list"></div>
+            </section>
+
+            <section class="panel-block">
+              <h2>Histórico recente</h2>
+              <div id="historyList" class="history-list"></div>
+            </section>
+          </section>
+        </div>
+      </section>
+      <div id="toast" class="toast" role="status"></div>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,256 @@
+.instructor-shell {
+  width: min(1540px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 22px 0 56px;
+}
+
+.session-setup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 380px) minmax(240px, 320px);
+  gap: 18px;
+  align-items: end;
+  padding: clamp(18px, 3vw, 28px);
+}
+
+.setup-form {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboard {
+  display: grid;
+  gap: 16px;
+}
+
+.dashboard-top,
+.room-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  background: linear-gradient(90deg, rgba(226, 58, 52, 0.18), rgba(255, 210, 74, 0.08), rgba(32, 37, 45, 0.95));
+}
+
+.dashboard-top h1 {
+  font-size: clamp(1.6rem, 4vw, 3.6rem);
+}
+
+.dashboard-top p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.control-panel,
+.live-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.panel-block {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.qr-canvas {
+  width: 220px;
+  height: 220px;
+  border: 8px solid #fff;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.public-link {
+  overflow-wrap: anywhere;
+  color: var(--yellow);
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.segmented button,
+.activity-list button {
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+
+.segmented button.active,
+.activity-list button.active {
+  color: #1b1200;
+  border-color: var(--yellow);
+  background: var(--yellow);
+}
+
+.activity-list {
+  display: grid;
+  gap: 8px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.activity-list button {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.activity-list small {
+  color: inherit;
+  opacity: 0.76;
+}
+
+.activity-actions,
+.score-form {
+  display: grid;
+  gap: 10px;
+}
+
+.metric-row {
+  display: grid;
+  grid-template-columns: 0.7fr 1.6fr 0.9fr;
+  gap: 12px;
+}
+
+.metric {
+  min-height: 86px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  background: var(--panel);
+}
+
+.metric span {
+  display: block;
+  font-size: clamp(1.4rem, 3vw, 2.2rem);
+  font-weight: 850;
+}
+
+.metric small {
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.podium-card,
+.team-card,
+.history-item {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.podium-card strong {
+  display: block;
+  font-size: 1.2rem;
+}
+
+.podium-card:first-child {
+  border-color: rgba(255, 210, 74, 0.5);
+}
+
+.team-list,
+.history-list {
+  display: grid;
+  gap: 10px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.team-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.team-badge {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+}
+
+.progress-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.progress-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--red), var(--yellow));
+}
+
+.history-item {
+  display: grid;
+  gap: 4px;
+}
+
+.history-item small {
+  color: var(--muted);
+}
+
+@media (max-width: 1060px) {
+  .session-setup,
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-top {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .quick-actions {
+    justify-content: stretch;
+  }
+
+  .metric-row,
+  .podium {
+    grid-template-columns: 1fr;
+  }
+
+  .segmented {
+    grid-template-columns: 1fr;
+  }
+}

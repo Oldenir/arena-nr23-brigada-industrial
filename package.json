@@ -1,0 +1,16 @@
+{
+  "name": "arena-sl-treinamentos-nr23",
+  "version": "1.0.0",
+  "description": "ARENA SL TREINAMENTOS - NR 23 Brigada Industrial e Primeiros Socorros",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check netlify/functions/api.js && node --check assets/js/team.js && node --check assets/js/instructor.js && node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
