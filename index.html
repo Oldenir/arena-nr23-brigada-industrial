@@ -1,22 +1,30 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-page="home">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#111318">
-    <title>ARENA SL TREINAMENTOS - NR 23 Brigada Industrial</title>
+    <title>Plataforma de Treinamento</title>
+    <link rel="icon" href="/assets/images/favicon.ico">
     <link rel="stylesheet" href="/assets/css/global.css">
+    <script type="module" src="/assets/js/branding.js"></script>
   </head>
   <body>
     <header class="app-header">
-      <a class="brand" href="/" aria-label="ARENA SL TREINAMENTOS">
-        <img src="/assets/images/arena-shield.svg" alt="" width="54" height="54">
+      <a class="brand" href="/">
+        <img src="/assets/images/arena-shield.svg" data-brand-logo alt="" width="54" height="54">
         <span>
-          <strong>ARENA SL TREINAMENTOS</strong>
-          <small>NR 23 - BRIGADA INDUSTRIAL</small>
+          <strong data-brand-company-name></strong>
+          <small data-brand-company-subtitle></small>
         </span>
       </a>
-      <p class="instructor-id">INSTRUTOR: OLDENIR</p>
+      <div class="instructor-badge" data-brand-instructor>
+        <img class="instructor-photo" data-brand-instructor-photo src="/assets/images/instructor-default.jpg" alt="" width="44" height="44">
+        <span class="instructor-meta">
+          <strong data-brand-instructor-name></strong>
+          <small data-brand-instructor-role></small>
+        </span>
+      </div>
     </header>
 
     <main class="home-shell">
@@ -36,7 +44,7 @@
       </section>
 
       <section class="module-grid" aria-label="Módulos disponíveis">
-        <article class="module-card fire-module">
+        <article class="module-card fire-module" data-brand-module="nr23">
           <div class="module-icon" aria-hidden="true">F</div>
           <p class="eyebrow">Disponível</p>
           <h2>Brigada Industrial</h2>
@@ -47,7 +55,7 @@
           </div>
         </article>
 
-        <article class="module-card aid-module">
+        <article class="module-card aid-module" data-brand-module="first-aid">
           <div class="module-icon" aria-hidden="true">+</div>
           <p class="eyebrow">Jogo extra disponível</p>
           <h2>Primeiros Socorros</h2>

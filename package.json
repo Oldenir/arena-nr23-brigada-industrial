@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check netlify/functions/api.js && node --check assets/js/team.js && node --check assets/js/instructor.js && node --test tests/*.test.js"
+    "check": "node --check netlify/functions/api.js && node --check assets/js/team.js && node --check assets/js/instructor.js && node --check assets/js/branding.js && node --check config/platform.js && node --test tests/*.test.js"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.9"

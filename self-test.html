@@ -1,20 +1,22 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-page="self-test">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#111318">
-    <title>Self-test - ARENA SL</title>
+    <title>Autoteste</title>
+    <link rel="icon" href="/assets/images/favicon.ico">
     <link rel="stylesheet" href="/assets/css/global.css">
     <link rel="stylesheet" href="/assets/css/self-test.css">
+    <script type="module" src="/assets/js/branding.js"></script>
     <script type="module" src="/assets/js/self-test.js"></script>
   </head>
   <body>
     <header class="app-header">
       <a class="brand" href="/">
-        <img src="/assets/images/arena-shield.svg" alt="" width="54" height="54">
+        <img src="/assets/images/arena-shield.svg" data-brand-logo alt="" width="54" height="54">
         <span>
-          <strong>ARENA SL TREINAMENTOS</strong>
+          <strong data-brand-company-name></strong>
           <small>SELF-TEST DE PRODUÇÃO</small>
         </span>
       </a>
@@ -27,7 +29,7 @@
       <section class="self-test-hero" aria-labelledby="selfTestTitle">
         <div>
           <p class="eyebrow">Diagnóstico local</p>
-          <h1 id="selfTestTitle">Verificação rápida da ARENA SL</h1>
+          <h1 id="selfTestTitle">Verificação rápida da <span data-brand-company-short></span></h1>
           <p>Execute antes da aula para conferir API, persistência, catálogos e regras de normalização.</p>
         </div>
         <button id="runTestBtn" class="button primary" type="button">Executar self-test</button>
