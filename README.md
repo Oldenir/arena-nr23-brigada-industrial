@@ -8,10 +8,108 @@ Aplicação web para aulas presenciais de Brigada Industrial, com módulo princi
 - `instrutor.html`: central do instrutor OLDENIR.
 - `equipe.html`: tela das equipes.
 - `self-test.html`: diagnóstico rápido antes da aula.
+- `config/platform.js`: **arquivo central de branding** (nome, logo, cores, instrutor, módulos).
+- `assets/js/branding.js`: helper que aplica o branding em todas as páginas.
 - `assets/js/activities/`: jogos por toque.
 - `data/`: conteúdo estruturado usado pela API e pelos catálogos públicos.
 - `netlify/functions/api.js`: API central com tokens, idempotência, ranking, histórico e persistência.
 - `tests/`: testes automatizados do conteúdo, pontuação e API.
+
+## Personalização da plataforma
+
+Toda a identidade visual é controlada por um único arquivo: **`config/platform.js`**.
+O helper `assets/js/branding.js` lê esse arquivo e aplica os valores em todas as
+páginas automaticamente (textos, título da aba, logo, favicon, foto e nome do
+instrutor, variáveis de cor e módulos habilitados). Não é preciso editar HTML.
+
+Para usar a plataforma com outra empresa, edite apenas `config/platform.js`:
+
+| Quero mudar... | Onde mexer |
+| --- | --- |
+| Nome da empresa | `company.name` |
+| Nome curto (cabeçalhos compactos) | `company.shortName` |
+| Subtítulo do curso | `company.subtitle` |
+| Logo | `company.logo` (substitua o arquivo em `assets/images/` ou aponte para outro caminho local) |
+| Favicon | `company.favicon` |
+| Foto do instrutor | `instructor.photo` (veja abaixo) |
+| Nome do instrutor | `instructor.name` |
+| Cargo do instrutor | `instructor.role` |
+| Cores | `theme.primaryColor`, `theme.secondaryColor`, `theme.accentColor`, `theme.backgroundColor`, `theme.textColor` |
+| Rodapé | `footer.text` |
+| Módulos exibidos | `modules.nr23`, `modules.firstAid` |
+
+### Trocar a foto do instrutor
+
+Duas opções:
+
+1. Substitua o arquivo `assets/images/instructor-default.jpg` por outra foto (mesmo nome); **ou**
+2. Aponte `instructor.photo` para outro caminho local, por exemplo `/assets/images/minha-foto.jpg`.
+
+Se a foto não existir ou falhar ao carregar, o cabeçalho mostra automaticamente
+um avatar com as iniciais do instrutor, sem quebrar o layout.
+
+### Trocar a logo
+
+Substitua `assets/images/arena-shield.svg` ou aponte `company.logo` para outro
+arquivo local. Se a imagem não carregar, é exibido um fallback com o nome curto.
+
+### Alterar as cores
+
+As cores de `theme` são aplicadas como variáveis CSS no elemento raiz
+(`--brand-primary`, `--brand-secondary`, `--brand-accent`, `--brand-background`,
+`--brand-text`), disponíveis para uso no CSS.
+
+### Ocultar módulos
+
+Defina `false` no módulo desejado. Por exemplo, para esconder Primeiros Socorros
+no portal e no painel:
+
+```js
+modules: {
+  nr23: true,
+  firstAid: false
+}
+```
+
+Isso apenas oculta o módulo na interface; a lógica interna dos jogos não muda.
+
+### Exemplo completo de `platformConfig`
+
+```js
+export const platformConfig = {
+  company: {
+    name: "ARENA SL TREINAMENTOS",
+    shortName: "ARENA SL",
+    subtitle: "NR 23 - BRIGADA INDUSTRIAL",
+    logo: "/assets/images/arena-shield.svg",
+    favicon: "/assets/images/favicon.ico"
+  },
+  instructor: {
+    name: "OLDENIR",
+    role: "Instrutor",
+    photo: "/assets/images/instructor-default.jpg"
+  },
+  theme: {
+    primaryColor: "#ffcf3f",
+    secondaryColor: "#20262f",
+    accentColor: "#e53b34",
+    backgroundColor: "#0f1318",
+    textColor: "#ffffff"
+  },
+  footer: {
+    text: "ARENA SL TREINAMENTOS"
+  },
+  locale: "pt-BR",
+  modules: {
+    nr23: true,
+    firstAid: true
+  }
+};
+```
+
+> Uma futura tela "Configurações da Plataforma" poderá editar esses mesmos
+> campos. A arquitetura já está pronta (config central + helper + placeholders
+> `data-brand-*`); a persistência das configurações não faz parte deste commit.
 
 ## Requisitos
 

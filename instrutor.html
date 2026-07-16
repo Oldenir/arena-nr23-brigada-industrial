@@ -1,27 +1,35 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-page="instructor">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#111318">
-    <title>Central do Instrutor - ARENA SL</title>
+    <title>Central do Instrutor</title>
+    <link rel="icon" href="/assets/images/favicon.ico">
     <link rel="stylesheet" href="/assets/css/global.css">
     <link rel="stylesheet" href="/assets/css/instrutor.css">
     <script src="/assets/vendor/qrcode.min.js" defer></script>
+    <script type="module" src="/assets/js/branding.js"></script>
     <script type="module" src="/assets/js/instructor.js"></script>
   </head>
   <body>
     <header class="app-header">
       <a class="brand" href="/">
-        <img src="/assets/images/arena-shield.svg" alt="" width="54" height="54">
+        <img src="/assets/images/arena-shield.svg" data-brand-logo alt="" width="54" height="54">
         <span>
-          <strong>ARENA SL TREINAMENTOS</strong>
-          <small>NR 23 - BRIGADA INDUSTRIAL</small>
+          <strong data-brand-company-name></strong>
+          <small data-brand-company-subtitle></small>
         </span>
       </a>
       <div class="header-actions">
         <span id="apiStatus" class="status-chip">sincronizando</span>
-        <p class="instructor-id">INSTRUTOR: OLDENIR</p>
+        <div class="instructor-badge" data-brand-instructor>
+          <img class="instructor-photo" data-brand-instructor-photo src="/assets/images/instructor-default.jpg" alt="" width="44" height="44">
+          <span class="instructor-meta">
+            <strong data-brand-instructor-name></strong>
+            <small data-brand-instructor-role></small>
+          </span>
+        </div>
       </div>
     </header>
 
@@ -40,8 +48,8 @@
           <label>
             Módulo inicial
             <select name="moduleId">
-              <option value="nr23">Brigada Industrial</option>
-              <option value="first-aid">Primeiros Socorros</option>
+              <option value="nr23" data-brand-module="nr23">Brigada Industrial</option>
+              <option value="first-aid" data-brand-module="first-aid">Primeiros Socorros</option>
             </select>
           </label>
           <button class="button primary" type="submit">Criar nova sessão</button>
@@ -80,8 +88,8 @@
             <section class="panel-block">
               <h2>Módulo</h2>
               <div class="segmented" role="group" aria-label="Selecionar módulo">
-                <button data-module-switch="nr23" type="button">Brigada Industrial</button>
-                <button data-module-switch="first-aid" type="button">Primeiros Socorros</button>
+                <button data-module-switch="nr23" data-brand-module="nr23" type="button">Brigada Industrial</button>
+                <button data-module-switch="first-aid" data-brand-module="first-aid" type="button">Primeiros Socorros</button>
               </div>
             </section>
 
